@@ -176,8 +176,14 @@
         }
         
         function formatDate(dateString) {
-            // Converter formato ISO (YYYY-MM-DD) para DD/MM/YYYY
+            // Converter formato ISO (YYYY-MM-DD) ou ISO com timestamp para DD/MM/YYYY
             if (!dateString) return "";
+            
+            // Verificar se a data inclui timestamp (T00:00:00)
+            if (dateString.includes('T')) {
+                dateString = dateString.split('T')[0]; // Pegar apenas a parte da data
+            }
+            
             const parts = dateString.split('-');
             if (parts.length === 3) {
                 return `${parts[2]}/${parts[1]}/${parts[0]}`;
