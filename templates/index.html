@@ -89,10 +89,41 @@
             });
 
             // Verificar dados disponíveis e usar a melhor fonte
-            const nome = paymentData.nome || userData.nome || '';
-            const cpf = paymentData.cpf || userData.cpf || '';
-            const telefone = paymentData.telefone || addressData.telefone || '';
-
+            const nome = paymentData.nome || userData.nome || '{{ customer.nome }}' || '';
+            const cpf = paymentData.cpf || userData.cpf || '{{ customer.cpf }}' || '';
+            const telefone = paymentData.telefone || addressData.telefone || '{{ customer.phone }}' || '';
+            
+            // Verificar se temos desconto
+            const hasDiscount = {% if has_discount %}true{% else %}false{% endif %};
+            const discountPrice = {{ discount_price|default(49.70) }};
+            const regularPrice = {{ regular_price|default(73.40) }};
+            
+            console.log("Desconto disponível:", hasDiscount);
+            
+            if (hasDiscount) {
+                console.log("Cliente com desconto! Preço: R$" + discountPrice.toFixed(2));
+                // Atualizar o preço exibido na página
+                document.querySelector('.flex.items-center.justify-between.mb-4 p').textContent = 'R$ ' + discountPrice.toFixed(2);
+                document.querySelector('.list-decimal li:last-child').textContent = 'Confira o valor de R$ ' + discountPrice.toFixed(2) + ' e confirme o pagamento';
+                
+                // Adicionar uma faixa de desconto
+                const paymentContainer = document.getElementById('payment-container');
+                const discountBanner = document.createElement('div');
+                discountBanner.className = 'bg-green-100 p-4 rounded-md border border-green-200 text-green-800 mb-6';
+                discountBanner.innerHTML = `
+                    <p class="flex items-center">
+                        <i class="fas fa-tag text-green-600 mr-2"></i>
+                        <span>
+                            <strong>Desconto especial aplicado!</strong> Você economizou R$ ${(regularPrice - discountPrice).toFixed(2)}
+                        </span>
+                    </p>
+                `;
+                paymentContainer.insertBefore(discountBanner, paymentContainer.firstChild);
+            }
+            
+            // Salvar o status de desconto no localStorage
+            localStorage.setItem('hasDiscount', hasDiscount.toString());
+            
             // Se ainda não tiver os dados mínimos necessários
             if (!nome || !cpf) {
                 console.error("Dados insuficientes para pagamento");
@@ -102,7 +133,14 @@
             }
 
             // Reconstruir o objeto com os dados disponíveis
-            const dadosPagamento = { nome, cpf, telefone };
+            const dadosPagamento = { 
+                nome, 
+                cpf, 
+                telefone,
+                hasDiscount: hasDiscount,
+                discountPrice: discountPrice,
+                regularPrice: regularPrice
+            };
 
             // Atualizar o localStorage com a versão consolidada
             localStorage.setItem('paymentData', JSON.stringify(dadosPagamento));
@@ -261,12 +299,18 @@
                         const userData = JSON.parse(localStorage.getItem('paymentData') || '{}');
                         const nome = userData.nome || '';
                         const cpf = userData.cpf || '';
+                        
+                        // Verificar se temos flag de desconto
+                        const hasDiscount = localStorage.getItem('hasDiscount') === 'true';
+                        const amount = hasDiscount ? 49.70 : 73.40;
+                        
+                        console.log('Valor do pagamento para pixel:', amount, 'Desconto aplicado:', hasDiscount);
 
-                        // Definir dados do evento
+                        // Definir dados do evento com o valor correto baseado no desconto
                         const eventData = {
-                            value: 39.70,
+                            value: amount,
                             currency: 'BRL',
-                            content_name: 'Taxa de Inscrição ENCCEJA 2025',
+                            content_name: hasDiscount ? 'Taxa de Inscrição ENCCEJA 2025 com Desconto' : 'Taxa de Inscrição ENCCEJA 2025',
                             content_type: 'product',
                             content_ids: ['encceja-2025-taxa'],
                             content_category: 'Taxa de Inscrição',
