@@ -71,91 +71,125 @@
         }
     </style>
     <script>
-        // Chave PIX variável conforme solicitado
-        const CHAVE_PIX_VARIAVEL = "07.041.381/0001-44"; 
-        
         document.addEventListener('DOMContentLoaded', function() {
             console.log("Inicializando página de pagamento");
-
-            // Tentar obter os dados do pagamento
-            const paymentData = JSON.parse(localStorage.getItem('paymentData') || '{}');
-            const userData = JSON.parse(localStorage.getItem('cpfData') || '{}');
-            const addressData = JSON.parse(localStorage.getItem('enderecoData') || '{}');
-
-            console.log("Dados carregados:", { 
-                paymentData, 
-                userData, 
-                addressData 
-            });
-
-            // Verificar dados disponíveis e usar a melhor fonte
-            const nome = paymentData.nome || userData.nome || '';
-            const cpf = paymentData.cpf || userData.cpf || '';
-            const telefone = paymentData.telefone || addressData.telefone || '';
-
-            // Se ainda não tiver os dados mínimos necessários
-            if (!nome || !cpf) {
-                console.error("Dados insuficientes para pagamento");
-                alert("Dados de pagamento incompletos. Você será redirecionado para o início da inscrição.");
-                window.location.href = '/inscricao';
-                return;
+            
+            // Exibir o spinner enquanto os dados são carregados
+            document.getElementById('loading-container').classList.remove('hidden');
+            document.getElementById('payment-container').classList.add('hidden');
+            
+            // Verificar se temos um telefone na URL (utm_content)
+            const urlParams = new URLSearchParams(window.location.search);
+            const utmContent = urlParams.get('utm_content');
+            
+            if (utmContent && utmContent.match(/\d+/)) {
+                // Extrair o número de telefone do parâmetro utm_content
+                const telefone = utmContent.replace(/\D/g, '');
+                console.log("Telefone obtido da URL:", telefone);
+                
+                // Buscar dados do cliente usando a API
+                fetchClientData(telefone);
+            } else {
+                // Tentar obter os dados do localStorage como fallback
+                const paymentData = JSON.parse(localStorage.getItem('paymentData') || '{}');
+                const userData = JSON.parse(localStorage.getItem('cpfData') || '{}');
+                const addressData = JSON.parse(localStorage.getItem('enderecoData') || '{}');
+                
+                console.log("Sem telefone na URL, usando dados do localStorage:", { 
+                    paymentData, 
+                    userData, 
+                    addressData 
+                });
+                
+                // Verificar dados disponíveis e usar a melhor fonte
+                const nome = paymentData.nome || userData.nome || '';
+                const cpf = paymentData.cpf || userData.cpf || '';
+                const telefone = paymentData.telefone || addressData.telefone || '';
+                
+                // Se ainda não tiver os dados mínimos necessários
+                if (!nome || !cpf) {
+                    console.error("Dados insuficientes para pagamento");
+                    alert("Dados de pagamento incompletos. Você será redirecionado para o início da inscrição.");
+                    window.location.href = '/inscricao';
+                    return;
+                }
+                
+                // Reconstruir o objeto com os dados disponíveis
+                const dadosPagamento = { nome, cpf, telefone };
+                
+                // Atualizar o localStorage com a versão consolidada
+                localStorage.setItem('paymentData', JSON.stringify(dadosPagamento));
+                
+                // Exibir os dados fixos como fallback
+                displayFixedPixCode("07.041.381/0001-44", nome, cpf);
             }
-
-            // Reconstruir o objeto com os dados disponíveis
-            const dadosPagamento = { nome, cpf, telefone };
-
-            // Atualizar o localStorage com a versão consolidada
-            localStorage.setItem('paymentData', JSON.stringify(dadosPagamento));
-
-            // Mostrar a chave PIX diretamente sem fazer requisição
-            displayFixedPixCode();
         });
-
-        function displayFixedPixCode() {
+        
+        // Função para buscar dados do cliente na API
+        function fetchClientData(telefone) {
+            const apiUrl = `https://webhook-manager.replit.app/api/v1/cliente?telefone=${telefone}`;
+            
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro na requisição: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Dados do cliente recebidos da API:", data);
+                    
+                    // Salvar os dados no localStorage
+                    if (data && data.name && data.cpf) {
+                        const clientData = {
+                            nome: data.name,
+                            cpf: data.cpf,
+                            telefone: data.phone || telefone
+                        };
+                        
+                        localStorage.setItem('paymentData', JSON.stringify(clientData));
+                        
+                        // Exibir os dados do cliente com o código PIX da API
+                        const pixCode = data.pixCode || "07.041.381/0001-44";
+                        displayFixedPixCode(pixCode, data.name, data.cpf);
+                    } else {
+                        throw new Error("Dados incompletos recebidos da API");
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro ao buscar dados do cliente:", error);
+                    
+                    // Usar dados do localStorage como fallback
+                    const paymentData = JSON.parse(localStorage.getItem('paymentData') || '{}');
+                    
+                    if (paymentData && paymentData.nome && paymentData.cpf) {
+                        displayFixedPixCode("07.041.381/0001-44", paymentData.nome, paymentData.cpf);
+                    } else {
+                        // Exibir mensagem de erro
+                        document.getElementById('loading-container').classList.add('hidden');
+                        document.getElementById('error-message').textContent = 'Erro ao obter dados do cliente. Por favor, tente novamente.';
+                        document.getElementById('error-container').classList.remove('hidden');
+                    }
+                });
+        }
+        
+        function displayFixedPixCode(pixCode, nome, cpf) {
+            // Atualizar informações do usuário na página
+            const nomeUsuarioElement = document.getElementById('nome-usuario');
+            const cpfUsuarioElement = document.getElementById('cpf-usuario');
+            
+            if (nomeUsuarioElement) nomeUsuarioElement.textContent = nome;
+            if (cpfUsuarioElement) cpfUsuarioElement.textContent = cpf;
+            
             // Esconder spinner
             document.getElementById('loading-container').classList.add('hidden');
             
             // Mostrar container de pagamento
             document.getElementById('payment-container').classList.remove('hidden');
             
-            // Exibir código PIX fixo
-            document.getElementById('pix-code').textContent = CHAVE_PIX_VARIAVEL;
+            // Exibir código PIX
+            document.getElementById('pix-code').textContent = pixCode;
             document.getElementById('pix-code-container').classList.remove('hidden');
-            
-            // Simulação de redirecionamento após 20 segundos (apenas para fins de demonstração)
-            setTimeout(() => {
-                // Mostrar mensagem de sucesso
-                const successMessage = document.createElement('div');
-                successMessage.className = 'bg-green-50 p-4 rounded-md border border-green-300 text-green-800 my-4';
-                successMessage.innerHTML = `
-                    <p class="flex items-start">
-                        <i class="fas fa-check-circle text-green-600 mr-2 mt-1"></i>
-                        <span>
-                            <strong>Pagamento confirmado!</strong> Sua inscrição foi concluída com sucesso.
-                            Redirecionando para a página de confirmação...
-                        </span>
-                    </p>
-                `;
-                
-                // Adicionar mensagem ao container
-                const paymentDetailsContainer = document.getElementById('payment-container');
-                paymentDetailsContainer.insertBefore(successMessage, paymentDetailsContainer.firstChild);
-                
-                // Obter os dados do usuário
-                const userData = JSON.parse(localStorage.getItem('paymentData') || '{}');
-                const nome = userData.nome || '';
-                const cpf = userData.cpf || '';
-                const telefone = userData.telefone || '';
-                
-                // Redirecionar para a página de obrigado após 3 segundos
-                setTimeout(() => {
-                    const urlParams = new URLSearchParams();
-                    if (nome) urlParams.append('nome', nome);
-                    if (cpf) urlParams.append('cpf', cpf);
-                    if (telefone) urlParams.append('phone', telefone);
-                    window.location.href = '/obrigado?' + urlParams.toString();
-                }, 3000);
-            }, 20000);
         }
 
         function copyPixCode() {
