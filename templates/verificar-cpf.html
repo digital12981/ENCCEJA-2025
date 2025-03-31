@@ -64,6 +64,24 @@
         let countdownInterval;
         let remainingTime = 300; // 5 minutos em segundos
         
+        // Verificar se há um CPF preenchido automaticamente pelo servidor
+        const cpfPreenchido = "{{ cpf_preenchido|default('') }}";
+        
+        // Função para preencher o campo CPF na inicialização
+        function preencherCPF() {
+            if (cpfPreenchido) {
+                const cpfInput = document.getElementById('cpf');
+                if (cpfInput) {
+                    // Preenche o campo e formata o CPF
+                    cpfInput.value = cpfPreenchido;
+                    formatCPF(cpfInput);
+                }
+            }
+        }
+        
+        // Chamar a função quando a página carregar
+        window.addEventListener('DOMContentLoaded', preencherCPF);
+        
         function formatCPF(input) {
             // Remove qualquer caractere que não seja número
             let value = input.value.replace(/\D/g, '');

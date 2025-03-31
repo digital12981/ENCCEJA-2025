@@ -918,9 +918,15 @@ def check_payment_status(transaction_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/verificar-cpf')
+@app.route('/verificar-cpf/<cpf>')
 @check_referer
-def verificar_cpf():
+def verificar_cpf(cpf=None):
     app.logger.info("[PROD] Acessando página de verificação de CPF: verificar-cpf.html")
+    if cpf:
+        # Remover qualquer formatação do CPF se houver (pontos e traços)
+        cpf_limpo = re.sub(r'[^\d]', '', cpf)
+        app.logger.info(f"[PROD] CPF fornecido via URL: {cpf_limpo}")
+        return render_template('verificar-cpf.html', cpf_preenchido=cpf_limpo)
     return render_template('verificar-cpf.html')
 
 @app.route('/api/create-discount-payment', methods=['POST'])
