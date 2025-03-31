@@ -354,6 +354,9 @@
                 </div>
             `;
             
+            // Ocultar o botão de enviar na tela de pagamento
+            document.querySelector('.form-footer').style.display = 'none';
+            
             console.log("Container de QR code visível");
             
             // Iniciar a contagem regressiva
@@ -536,8 +539,12 @@
                             Sair
                         </a>
                     </div>
-                    <!-- Botão Enviar removido -->
-                    <div class="p-2"></div>
+                    <div class="form-footer p-0 flex justify-center items-center">
+                        <button id="submit-button" class="flex items-center justify-center w-full h-full py-3" type="button" disabled onclick="submitForm()">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            <span>Enviar</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
