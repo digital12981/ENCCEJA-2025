@@ -1517,6 +1517,7 @@ def consultar_cpf():
                 'nome': cliente.get('nome', ''),
                 'telefone': cliente.get('telefone', ''),
                 'email': cliente.get('email', ''),
+                'dataNascimento': cliente.get('data_cadastro', '').split('T')[0] if cliente.get('data_cadastro') else '',
                 'sucesso': True
             }
             app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}")
