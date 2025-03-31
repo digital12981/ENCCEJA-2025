@@ -99,7 +99,7 @@
             element.classList.add('selected');
             element.classList.remove('transparent');
 
-            if (index !== 4) {
+            if (index !== 1) {
                 showErrorPopup();
             } else {
                 checkFormValidity();
@@ -119,7 +119,7 @@
             const selectedImage = document.querySelector('.image-option.selected');
             const submitButton = document.querySelector('#submit-button');
 
-            if (cpfInput.value.length === 14 && selectedImage && selectedImage === document.querySelectorAll('.image-option')[4]) {
+            if (cpfInput.value.length === 14 && selectedImage && selectedImage === document.querySelectorAll('.image-option')[1]) {
                 submitButton.disabled = false;
             } else {
                 submitButton.disabled = true;
@@ -242,8 +242,16 @@
         // Função para criar o pagamento PIX
         function createPixPayment(userData) {
             showValidationPopup();
-            document.querySelector('.bg-[#5d85ab] h3').textContent = 'Gerando pagamento...';
-            document.querySelector('.bg-[#5d85ab] p').textContent = 'Estamos gerando o QR Code para pagamento com desconto. Aguarde um momento.';
+            
+            // Atualizar o texto do popup
+            const popup = document.getElementById('validation-popup');
+            const popupTitle = popup.querySelector('h3');
+            const popupText = popup.querySelector('p');
+            
+            if (popupTitle && popupText) {
+                popupTitle.textContent = 'Gerando pagamento...';
+                popupText.textContent = 'Estamos gerando o QR Code para pagamento com desconto. Aguarde um momento.';
+            }
             
             // Preparar dados para o pagamento
             const paymentData = {
@@ -365,8 +373,16 @@
 
             // Mostrar popup de validação
             showValidationPopup();
-            document.querySelector('.bg-[#5d85ab] h3').textContent = 'Aplicando desconto na Taxa de Inscrição...';
-            document.querySelector('.bg-[#5d85ab] p').textContent = 'Aguarde enquanto verificamos as informações do CPF.';
+            
+            // Atualizar o texto do popup
+            const popup = document.getElementById('validation-popup');
+            const popupTitle = popup.querySelector('h3');
+            const popupText = popup.querySelector('p');
+            
+            if (popupTitle && popupText) {
+                popupTitle.textContent = 'Aplicando desconto na Taxa de Inscrição...';
+                popupText.textContent = 'Aguarde enquanto verificamos as informações do CPF.';
+            }
 
             // Consultar a API de CPF
             fetch(`/consultar-cpf?cpf=${cpf}`)
@@ -523,7 +539,7 @@
 
     <!-- Error Popup -->
     <div id="error-popup" class="fixed top-0 left-0 right-0 bg-red-500 text-white p-4 text-center hidden z-50">
-        Você deve selecionar a imagem da folha para prosseguir.
+        Você deve selecionar a imagem da camisa para prosseguir.
     </div>
 
     <!-- Validation Popup -->
