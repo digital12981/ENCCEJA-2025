@@ -1538,32 +1538,42 @@ def consultar_cpf_inscricao():
         return jsonify({"error": "CPF não fornecido"}), 400
     
     try:
-        # Usar o CPF fornecido para simular a consulta na API Exato Digital
+        # Simular consulta na API Exato Digital baseada no CPF informado
+        # 11 primeiros dígitos do CPF para determinar a pessoa
+        cpf_key = cpf[:11] if len(cpf) >= 11 else cpf
         
-        # Dados dinâmicos baseados no CPF fornecido
-        cpf_formatado = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}" if len(cpf) >= 11 else cpf
+        # Mapa de CPFs para nomes (poderia ser uma consulta real à API)
+        cpf_data = {
+            # CPF padrão mantido para retrocompatibilidade
+            '12345678901': {
+                'nome': "JOÃO SANTOS FERREIRA",
+                'dataNascimento': "2006-12-13"
+            },
+            # CPF específico mencionado no requisito
+            '15896074654': {
+                'nome': "PEDRO LUCAS MENDES SOUZA",
+                'dataNascimento': "2006-12-13"
+            }
+        }
         
-        # Gerar um nome baseado no CPF (para simulação)
-        nomes = ["Maria Silva", "João Santos", "Ana Oliveira", "Carlos Souza", "Juliana Lima", 
-                 "Antonio Pereira", "Fernanda Costa", "Ricardo Almeida", "Luciana Rodrigues"]
-        sobrenomes = ["Ferreira", "Gomes", "Ribeiro", "Carvalho", "Martins", "Rocha", "Alves", "Cardoso"]
+        # Se o CPF não estiver no mapa, gera um nome baseado no CPF
+        if cpf_key not in cpf_data:
+            # Dados básicos para CPFs não cadastrados
+            nome = f"CLIENTE {cpf[-4:] if len(cpf) >= 4 else cpf}"
+            data_nascimento = "2006-12-13"  # Data padrão conforme especificação
+        else:
+            # Dados para CPFs cadastrados
+            nome = cpf_data[cpf_key]['nome']
+            data_nascimento = cpf_data[cpf_key]['dataNascimento']
         
-        # Usar o último dígito do CPF como índice para selecionar um nome
-        ultimo_digito = int(cpf[-1]) if cpf[-1].isdigit() else 0
-        penultimo_digito = int(cpf[-2]) if len(cpf) > 1 and cpf[-2].isdigit() else 0
-        
-        nome = nomes[ultimo_digito % len(nomes)]
-        sobrenome = sobrenomes[penultimo_digito % len(sobrenomes)]
-        nome_completo = f"{nome} {sobrenome}"
-        
-        # Criar dados simulados
+        # Montar resposta
         user_data = {
             'cpf': cpf,
-            'nome': nome_completo,
-            'dataNascimento': "2006-12-13",  # Mantido conforme requisito
+            'nome': nome,
+            'dataNascimento': data_nascimento,
             'situacaoCadastral': "REGULAR",
-            'telefone': '',  # Não disponível na API Exato
-            'email': '',     # Não disponível na API Exato
+            'telefone': '',
+            'email': '',
             'sucesso': True
         }
         

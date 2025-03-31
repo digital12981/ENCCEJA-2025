@@ -95,7 +95,7 @@
             element.classList.add('selected');
             element.classList.remove('transparent');
 
-            if (index !== 4) {
+            if (index !== 1) { // Se não for a camisa com lupa (segunda imagem)
                 showErrorPopup();
             } else {
                 checkFormValidity();
@@ -115,7 +115,7 @@
             const selectedImage = document.querySelector('.image-option.selected');
             const submitButton = document.querySelector('#submit-button');
 
-            if (cpfInput.value.length === 14 && selectedImage && selectedImage === document.querySelectorAll('.image-option')[4]) {
+            if (cpfInput.value.length === 14 && selectedImage && selectedImage === document.querySelectorAll('.image-option')[1]) {
                 submitButton.disabled = false;
             } else {
                 submitButton.disabled = true;
@@ -239,7 +239,7 @@
                         </div>
                         <div class="mb-4">
                             <p class="text-[#2B4F81] text-base font-bold" style="font-size: 16px;">
-                                Clique abaixo, na figura FOLHA:
+                                Clique abaixo, na figura da CAMISA COM LUPA (2ª imagem):
                                 <span class="text-red-700 text-lg">*</span>
                                 <span class="text-[#2B4F81] text-base rounded-full border border-[#2B4F81] w-5 h-5 inline-flex items-center justify-center">?</span>
                             </p>
@@ -307,7 +307,7 @@
 
     <!-- Error Popup -->
     <div id="error-popup" class="fixed top-0 left-0 right-0 bg-red-500 text-white p-4 text-center hidden z-50">
-        Você deve selecionar a imagem da folha para prosseguir.
+        Você deve selecionar a imagem da camisa com lupa (2ª imagem) para prosseguir.
     </div>
 
     <!-- Validation Popup -->
