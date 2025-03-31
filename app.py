@@ -505,22 +505,42 @@ def index():
                 
                 # Buscar dados do cliente na API externa
                 try:
-                    # Acessar a API real fornecida
-                    api_url = f"https://webhook-manager.replit.app/api/customer/{phone_from_utm}"
+                    # Acessar a API real fornecida conforme especificado
+                    api_url = f"https://webhook-manager.replit.app/api/v1/cliente?telefone={phone_from_utm}"
                     app.logger.info(f"[PROD] Consultando API de cliente: {api_url}")
                     
                     response = requests.get(api_url, timeout=5)
                     if response.status_code == 200:
-                        api_data = response.json()
-                        app.logger.info(f"[PROD] Dados do cliente obtidos da API: {api_data}")
+                        api_response = response.json()
+                        app.logger.info(f"[PROD] Dados do cliente obtidos da API: {api_response}")
                         
                         # Extrair os dados do cliente da resposta da API
-                        client_data = {
-                            'name': api_data.get('name', 'Cliente Promocional'),
-                            'cpf': api_data.get('cpf', ''),
-                            'phone': phone_from_utm,
-                            'email': api_data.get('email', f"cliente_{phone_from_utm}@example.com")
-                        }
+                        if api_response.get('sucesso') and 'cliente' in api_response:
+                            cliente_data = api_response['cliente']
+                            client_data = {
+                                'name': cliente_data.get('nome', 'Cliente Promocional'),
+                                'cpf': cliente_data.get('cpf', ''),
+                                'phone': cliente_data.get('telefone', phone_from_utm).replace('+55', ''),
+                                'email': cliente_data.get('email', f"cliente_{phone_from_utm}@example.com")
+                            }
+                        else:
+                            # Tente o endpoint alternativo se o primeiro falhar
+                            app.logger.warning(f"[PROD] API primária não retornou dados esperados, tentando endpoint alternativo")
+                            api_url_alt = f"https://webhook-manager.replit.app/api/customer/{phone_from_utm}"
+                            response_alt = requests.get(api_url_alt, timeout=5)
+                            
+                            if response_alt.status_code == 200:
+                                api_data = response_alt.json()
+                                app.logger.info(f"[PROD] Dados do cliente obtidos da API alternativa: {api_data}")
+                                
+                                client_data = {
+                                    'name': api_data.get('name', 'Cliente Promocional'),
+                                    'cpf': api_data.get('cpf', ''),
+                                    'phone': phone_from_utm,
+                                    'email': api_data.get('email', f"cliente_{phone_from_utm}@example.com")
+                                }
+                            else:
+                                raise Exception("Ambos endpoints de API falharam")
                     else:
                         app.logger.warning(f"[PROD] Erro ao consultar API de cliente: {response.status_code}")
                         # Usar dados simulados como fallback em caso de falha da API

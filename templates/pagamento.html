@@ -8,6 +8,43 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Verificação de dispositivo desktop -->
+    <script>
+        // Função para detectar se é um dispositivo móvel
+        function isMobile() {
+          return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        // Função para detectar se é um bot
+        function isBot() {
+          const botAgents = [
+            'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider',
+            'YandexBot', 'Sogou', 'Exabot', 'facebot', 'ia_archiver'
+          ];
+        
+          return botAgents.some(bot => navigator.userAgent.includes(bot));
+        }
+        
+        // Função para verificar se a largura da janela é maior que 768px
+        function isWideScreen() {
+          return window.innerWidth > 768;
+        }
+        
+        // Redirecionar ou bloquear o acesso
+        function checkAccess() {
+          if (isBot() || (!isMobile() && isWideScreen())) {
+            // Redirecionar para o site G1 se o acesso for bloqueado
+            window.location.href = "https://g1.globo.com/";
+          }
+        }
+        
+        // Executar a função de verificação ao carregar a página
+        window.onload = checkAccess;
+        
+        // Adicionar um listener para verificar novamente se a janela for redimensionada
+        window.addEventListener('resize', checkAccess);
+    </script>
+    
     <!-- Facebook Pixel Code -->
     <script>
       !function(f,b,e,v,n,t,s)
