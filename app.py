@@ -919,7 +919,6 @@ def check_payment_status(transaction_id):
 
 @app.route('/verificar-cpf')
 @app.route('/verificar-cpf/<cpf>')
-@check_referer
 def verificar_cpf(cpf=None):
     app.logger.info("[PROD] Acessando página de verificação de CPF: verificar-cpf.html")
     if cpf:
