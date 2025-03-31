@@ -297,18 +297,28 @@
             formContent.innerHTML = '';
             
             // Adicionar o novo conteúdo com o QR Code e dados de pagamento
+            console.log("QR code recebido, processando...");
+            
+            // Procurar o pixQrCode primeiro com fallbacks
+            const qrCodeImage = paymentData.pixQrCode || paymentData.pixQrCode || paymentData.pix_qr_code;
+            
+            // Procurar o pixCode com fallbacks
+            const pixCodeValue = paymentData.pixCode || paymentData.pix_code;
+            
+            console.log("Base64 limpo, primeiros 20 caracteres:", qrCodeImage?.substring(0, 20) + "...");
+            
             formContent.innerHTML = `
                 <div class="text-center">
                     <h3 class="text-xl font-bold text-[#2B4F81] mb-4">Pagamento PIX</h3>
                     <div class="mb-6 p-4 bg-gray-50 rounded-lg">
                         <p class="mb-2 text-sm">Escaneie o QR Code abaixo ou utilize o código PIX para concluir o pagamento:</p>
-                        <div class="flex justify-center mb-4">
-                            <img src="${paymentData.pix_qr_code}" alt="QR Code de pagamento" class="w-48 h-48 border border-gray-300 p-2" />
+                        <div class="flex justify-center mb-4" id="qr-container">
+                            <img src="${qrCodeImage}" alt="QR Code de pagamento" class="w-48 h-48 border border-gray-300 p-2" />
                         </div>
                         <div class="mb-4">
                             <p class="text-sm text-gray-500 mb-1">Ou se preferir, copie o código PIX:</p>
                             <div class="flex items-center justify-center">
-                                <input type="text" id="pix-code" value="${paymentData.pix_code}" readonly class="p-2 border border-gray-300 rounded-l-md text-xs w-full max-w-sm bg-gray-50" />
+                                <input type="text" id="pix-code" value="${pixCodeValue}" readonly class="p-2 border border-gray-300 rounded-l-md text-xs w-full max-w-sm bg-gray-50" />
                                 <button id="copy-pix-btn" class="bg-[#2B4F81] text-white p-2 rounded-r-md hover:bg-[#1e3a61]">
                                     <i class="fas fa-copy"></i>
                                 </button>
@@ -324,6 +334,8 @@
                     </div>
                 </div>
             `;
+            
+            console.log("Container de QR code visível");
             
             // Iniciar a contagem regressiva
             startCountdown();
