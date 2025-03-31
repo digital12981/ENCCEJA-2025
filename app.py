@@ -1308,8 +1308,14 @@ def consultar_cpf():
     if not cpf:
         return jsonify({"error": "CPF não fornecido"}), 400
     
+    # Obter o token da variável de ambiente
+    cpf_api_token = os.environ.get("CPF_API_TOKEN")
+    if not cpf_api_token:
+        app.logger.error("Token da API de CPF não encontrado nas variáveis de ambiente")
+        return jsonify({"error": "Erro de configuração do servidor"}), 500
+    
     # URL da API com o token e CPF
-    api_url = f"https://api.exato.digital/receita-federal/cpf?token=268753a9b3a24819ae0f02159dee6724&cpf={cpf}&format=json"
+    api_url = f"https://api.exato.digital/receita-federal/cpf?token={cpf_api_token}&cpf={cpf}&format=json"
     
     try:
         # Fazer a solicitação para a API
