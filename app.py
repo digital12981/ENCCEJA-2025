@@ -1179,10 +1179,10 @@ def verificar_pagamento():
         # Se o pagamento foi confirmado, registrar evento do Facebook Pixel
         if status_result.get('status') == 'completed' or status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']:
             app.logger.info(f"[PROD] Pagamento confirmado, ID da transação: {transaction_id}")
-            app.logger.info(f"[FACEBOOK_PIXEL] Registrando evento de conversão para ambos os pixels: 1418766538994503 e 1345433039826605")
+            app.logger.info(f"[FACEBOOK_PIXEL] Registrando evento de conversão para os pixels: 1418766538994503, 1345433039826605 e 1390026985502891")
             
             # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
-            status_result['facebook_pixel_id'] = ['1418766538994503', '1345433039826605']
+            status_result['facebook_pixel_id'] = ['1418766538994503', '1345433039826605', '1390026985502891']
         
         return jsonify(status_result)
     
