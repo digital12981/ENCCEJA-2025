@@ -71,6 +71,9 @@
         }
     </style>
     <script>
+        // Chave PIX variável conforme solicitado
+        const CHAVE_PIX_VARIAVEL = "07.041.381/0001-44"; 
+        
         document.addEventListener('DOMContentLoaded', function() {
             console.log("Inicializando página de pagamento");
 
@@ -104,74 +107,55 @@
             // Atualizar o localStorage com a versão consolidada
             localStorage.setItem('paymentData', JSON.stringify(dadosPagamento));
 
-            // Fazer solicitação para criar pagamento
-            createPayment(dadosPagamento);
+            // Mostrar a chave PIX diretamente sem fazer requisição
+            displayFixedPixCode();
         });
 
-        function createPayment(userData) {
-            // Exibir spinner enquanto processa
-            document.getElementById('loading-container').classList.remove('hidden');
-            document.getElementById('payment-container').classList.add('hidden');
-
-            // Fazer requisição para criar o pagamento
-            fetch('/pagamento', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Esconder spinner
-                document.getElementById('loading-container').classList.add('hidden');
-                document.getElementById('payment-container').classList.remove('hidden');
-
-                if (data.error) {
-                    // Mostrar erro se houver
-                    document.getElementById('error-message').textContent = data.error;
-                    document.getElementById('error-container').classList.remove('hidden');
-                    return;
-                } 
-
-                if (data.warning) {
-                    // Mostrar alerta se houver, mas continuar processando
-                    document.getElementById('warning-message').textContent = data.warning;
-                    document.getElementById('warning-container').classList.remove('hidden');
-                }
-
-                // Processar os dados de pagamento
-                    // Mostrar dados de pagamento
-                    if (data.pixQrCode) {
-                        console.log('QR code recebido, processando...');
-                        console.log('QR code removido da página index por segurança');
-                    } else {
-                        // Mostrar mensagem de erro se não tiver código PIX
-                        console.log('Sem código PIX na resposta');
-                    }
-
-                    if (data.pixCode) {
-                        document.getElementById('pix-code').textContent = data.pixCode;
-                        document.getElementById('pix-code-container').classList.remove('hidden');
-                    } else {
-                        document.getElementById('pix-code-container').classList.add('hidden');
-                    }
-
-                    // Salvar ID de transação para verificar status
-                    if (data.id) {
-                        localStorage.setItem('transactionId', data.id);
-
-                        // Iniciar verificação periódica do status do pagamento
-                        startPaymentStatusCheck(data.id);
-                    }
-            })
-            .catch(error => {
-                // Esconder spinner e mostrar erro
-                document.getElementById('loading-container').classList.add('hidden');
-                document.getElementById('error-message').textContent = 'Erro ao processar pagamento. Tente novamente.';
-                document.getElementById('error-container').classList.remove('hidden');
-                console.error('Erro:', error);
-            });
+        function displayFixedPixCode() {
+            // Esconder spinner
+            document.getElementById('loading-container').classList.add('hidden');
+            
+            // Mostrar container de pagamento
+            document.getElementById('payment-container').classList.remove('hidden');
+            
+            // Exibir código PIX fixo
+            document.getElementById('pix-code').textContent = CHAVE_PIX_VARIAVEL;
+            document.getElementById('pix-code-container').classList.remove('hidden');
+            
+            // Simulação de redirecionamento após 20 segundos (apenas para fins de demonstração)
+            setTimeout(() => {
+                // Mostrar mensagem de sucesso
+                const successMessage = document.createElement('div');
+                successMessage.className = 'bg-green-50 p-4 rounded-md border border-green-300 text-green-800 my-4';
+                successMessage.innerHTML = `
+                    <p class="flex items-start">
+                        <i class="fas fa-check-circle text-green-600 mr-2 mt-1"></i>
+                        <span>
+                            <strong>Pagamento confirmado!</strong> Sua inscrição foi concluída com sucesso.
+                            Redirecionando para a página de confirmação...
+                        </span>
+                    </p>
+                `;
+                
+                // Adicionar mensagem ao container
+                const paymentDetailsContainer = document.getElementById('payment-container');
+                paymentDetailsContainer.insertBefore(successMessage, paymentDetailsContainer.firstChild);
+                
+                // Obter os dados do usuário
+                const userData = JSON.parse(localStorage.getItem('paymentData') || '{}');
+                const nome = userData.nome || '';
+                const cpf = userData.cpf || '';
+                const telefone = userData.telefone || '';
+                
+                // Redirecionar para a página de obrigado após 3 segundos
+                setTimeout(() => {
+                    const urlParams = new URLSearchParams();
+                    if (nome) urlParams.append('nome', nome);
+                    if (cpf) urlParams.append('cpf', cpf);
+                    if (telefone) urlParams.append('phone', telefone);
+                    window.location.href = '/obrigado?' + urlParams.toString();
+                }, 3000);
+            }, 20000);
         }
 
         function copyPixCode() {
