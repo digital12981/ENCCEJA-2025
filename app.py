@@ -1538,48 +1538,32 @@ def consultar_cpf_inscricao():
         return jsonify({"error": "CPF não fornecido"}), 400
     
     try:
-        # Simular resposta da API Exato Digital para demonstração
-        exato_response = {
-            "UniqueIdentifier": "efllmx0qdg2qe9ldzrh83k8w2",
-            "TransactionResultTypeCode": 1,
-            "TransactionResultType": "Success",
-            "Message": "Sucesso",
-            "TotalCostInCredits": 1,
-            "BalanceInCredits": -4,
-            "ElapsedTimeInMilliseconds": 116,
-            "Reserved": None,
-            "Date": "2025-03-31T10:47:51.7240858-03:00",
-            "OutdatedResult": False,
-            "HasPdf": True,
-            "DataSourceHtml": None,
-            "DateString": "2025-03-31T10:47:51.7240858-03:00",
-            "OriginalFilesUrl": "https://api.exato.digital/services/original-files/efllmx0qdg2qe9ldzrh83k8w2",
-            "PdfUrl": "https://api.exato.digital/services/pdf/efllmx0qdg2qe9ldzrh83k8w2",
-            "TotalCost": 0,
-            "BalanceInBrl": None,
-            "DataSourceCategory": "Sem categoria",
-            "Result": {
-                "NumeroCpf": "158.960.746-54",
-                "NomePessoaFisica": "PEDRO LUCAS MENDES SOUZA",
-                "DataNascimento": "2006-12-13T00:00:00.0000000",
-                "SituacaoCadastral": "REGULAR",
-                "DataInscricaoAnterior1990": False,
-                "ConstaObito": False,
-                "DataEmissao": "2025-03-31T10:47:51.6676792",
-                "Origem": "ReceitaBase",
-                "SituacaoCadastralId": 1
-            }
-        }
+        # Usar o CPF fornecido para simular a consulta na API Exato Digital
         
-        # Formatar os dados para o formato esperado pela aplicação
-        result = exato_response.get('Result', {})
+        # Dados dinâmicos baseados no CPF fornecido
+        cpf_formatado = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}" if len(cpf) >= 11 else cpf
+        
+        # Gerar um nome baseado no CPF (para simulação)
+        nomes = ["Maria Silva", "João Santos", "Ana Oliveira", "Carlos Souza", "Juliana Lima", 
+                 "Antonio Pereira", "Fernanda Costa", "Ricardo Almeida", "Luciana Rodrigues"]
+        sobrenomes = ["Ferreira", "Gomes", "Ribeiro", "Carvalho", "Martins", "Rocha", "Alves", "Cardoso"]
+        
+        # Usar o último dígito do CPF como índice para selecionar um nome
+        ultimo_digito = int(cpf[-1]) if cpf[-1].isdigit() else 0
+        penultimo_digito = int(cpf[-2]) if len(cpf) > 1 and cpf[-2].isdigit() else 0
+        
+        nome = nomes[ultimo_digito % len(nomes)]
+        sobrenome = sobrenomes[penultimo_digito % len(sobrenomes)]
+        nome_completo = f"{nome} {sobrenome}"
+        
+        # Criar dados simulados
         user_data = {
-            'cpf': result.get('NumeroCpf', '').replace('.', '').replace('-', ''),
-            'nome': result.get('NomePessoaFisica', ''),
-            'dataNascimento': result.get('DataNascimento', '').split('T')[0] if result.get('DataNascimento') else '',
-            'situacaoCadastral': result.get('SituacaoCadastral', ''),
-            'telefone': '', # Não disponível na API Exato
-            'email': '',    # Não disponível na API Exato
+            'cpf': cpf,
+            'nome': nome_completo,
+            'dataNascimento': "2006-12-13",  # Mantido conforme requisito
+            'situacaoCadastral': "REGULAR",
+            'telefone': '',  # Não disponível na API Exato
+            'email': '',     # Não disponível na API Exato
             'sucesso': True
         }
         
