@@ -8,6 +8,7 @@ import json
 import http.client
 import subprocess
 import logging
+import urllib.parse
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
 import secrets
 import qrcode
@@ -1512,18 +1513,20 @@ def consultar_cpf():
         # Verificar se a consulta foi bem-sucedida
         if data.get('sucesso') and 'cliente' in data:
             cliente = data['cliente']
-            user_data = {
-                'cpf': cliente.get('cpf', ''),
-                'nome': cliente.get('nome', ''),
-                'telefone': cliente.get('telefone', ''),
-                'email': cliente.get('email', ''),
-                'dataNascimento': cliente.get('data_cadastro', '').split('T')[0] if cliente.get('data_cadastro') else '',
-                'sucesso': True
-            }
-            app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}")
-            return jsonify(user_data)
+            
+            # Remover qualquer formatação do CPF
+            cpf_sem_pontuacao = re.sub(r'[^\d]', '', cliente.get('cpf', ''))
+            nome_completo = cliente.get('nome', '')
+            telefone = cliente.get('telefone', '')
+            
+            # Em vez de retornar JSON, redirecionar para a página de agradecimento
+            app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}. Redirecionando para página de agradecimento.")
+            
+            # Construir URL de redirecionamento com os parâmetros necessários
+            redirect_url = f"/obrigado?nome={urllib.parse.quote(nome_completo)}&cpf={cpf_sem_pontuacao}&phone={urllib.parse.quote(telefone)}"
+            return redirect(redirect_url)
         else:
-            # Em caso de erro na API
+            # Em caso de erro na API, ainda retornar JSON para que o front-end possa tratar
             return jsonify({"error": "CPF não encontrado ou inválido"}), 404
     
     except Exception as e:

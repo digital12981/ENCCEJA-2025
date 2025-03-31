@@ -423,6 +423,11 @@
             const cpfInput = document.querySelector('#cpf');
             const cpf = unformatCPF(cpfInput.value);
 
+            if (!cpf || cpf.length !== 11) {
+                alert("Por favor, informe um CPF válido com 11 dígitos.");
+                return;
+            }
+
             // Mostrar popup de validação
             showValidationPopup();
             
@@ -432,27 +437,12 @@
             const popupText = popup.querySelector('p');
             
             if (popupTitle && popupText) {
-                popupTitle.textContent = 'Aplicando desconto na Taxa de Inscrição...';
-                popupText.textContent = 'Aguarde enquanto verificamos as informações do CPF.';
+                popupTitle.textContent = 'Validando CPF...';
+                popupText.textContent = 'Aguarde enquanto verificamos as informações e preparamos seu pagamento.';
             }
 
-            // Consultar a API de CPF
-            fetch(`/consultar-cpf?cpf=${cpf}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Dados do CPF:", data);
-
-                    // Armazenar os dados retornados no localStorage para serem usados posteriormente
-                    localStorage.setItem('cpfData', JSON.stringify(data));
-
-                    // Atualizar o card com as informações do usuário
-                    updateCardWithUserInfo(data);
-                })
-                .catch(error => {
-                    console.error("Erro ao buscar CPF:", error);
-                    hideValidationPopup();
-                    alert("Ocorreu um erro ao validar o CPF. Por favor, tente novamente.");
-                });
+            // Redirecionar para a rota consultar-cpf que irá redirecionar para página de agradecimento
+            window.location.href = `/consultar-cpf?cpf=${cpf}`;
         }
     </script>
 </head>
