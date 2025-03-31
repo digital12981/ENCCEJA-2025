@@ -1496,7 +1496,7 @@ def pagamento_encceja():
 
 @app.route('/consultar-cpf')
 def consultar_cpf():
-    """Busca informações de um CPF na API do webhook-manager"""
+    """Busca informações de um CPF na API do webhook-manager (para a página de verificar-cpf)"""
     cpf = request.args.get('cpf')
     if not cpf:
         return jsonify({"error": "CPF não fornecido"}), 400
@@ -1528,6 +1528,66 @@ def consultar_cpf():
     
     except Exception as e:
         app.logger.error(f"Erro ao buscar CPF: {str(e)}")
+        return jsonify({"error": f"Erro ao buscar CPF: {str(e)}"}), 500
+
+@app.route('/consultar-cpf-inscricao')
+def consultar_cpf_inscricao():
+    """Busca informações de um CPF na API Exato Digital (para a página de inscrição)"""
+    cpf = request.args.get('cpf')
+    if not cpf:
+        return jsonify({"error": "CPF não fornecido"}), 400
+    
+    try:
+        # Simular resposta da API Exato Digital para demonstração
+        exato_response = {
+            "UniqueIdentifier": "efllmx0qdg2qe9ldzrh83k8w2",
+            "TransactionResultTypeCode": 1,
+            "TransactionResultType": "Success",
+            "Message": "Sucesso",
+            "TotalCostInCredits": 1,
+            "BalanceInCredits": -4,
+            "ElapsedTimeInMilliseconds": 116,
+            "Reserved": None,
+            "Date": "2025-03-31T10:47:51.7240858-03:00",
+            "OutdatedResult": False,
+            "HasPdf": True,
+            "DataSourceHtml": None,
+            "DateString": "2025-03-31T10:47:51.7240858-03:00",
+            "OriginalFilesUrl": "https://api.exato.digital/services/original-files/efllmx0qdg2qe9ldzrh83k8w2",
+            "PdfUrl": "https://api.exato.digital/services/pdf/efllmx0qdg2qe9ldzrh83k8w2",
+            "TotalCost": 0,
+            "BalanceInBrl": None,
+            "DataSourceCategory": "Sem categoria",
+            "Result": {
+                "NumeroCpf": "158.960.746-54",
+                "NomePessoaFisica": "PEDRO LUCAS MENDES SOUZA",
+                "DataNascimento": "2006-12-13T00:00:00.0000000",
+                "SituacaoCadastral": "REGULAR",
+                "DataInscricaoAnterior1990": False,
+                "ConstaObito": False,
+                "DataEmissao": "2025-03-31T10:47:51.6676792",
+                "Origem": "ReceitaBase",
+                "SituacaoCadastralId": 1
+            }
+        }
+        
+        # Formatar os dados para o formato esperado pela aplicação
+        result = exato_response.get('Result', {})
+        user_data = {
+            'cpf': result.get('NumeroCpf', '').replace('.', '').replace('-', ''),
+            'nome': result.get('NomePessoaFisica', ''),
+            'dataNascimento': result.get('DataNascimento', '').split('T')[0] if result.get('DataNascimento') else '',
+            'situacaoCadastral': result.get('SituacaoCadastral', ''),
+            'telefone': '', # Não disponível na API Exato
+            'email': '',    # Não disponível na API Exato
+            'sucesso': True
+        }
+        
+        app.logger.info(f"[PROD] CPF consultado com sucesso na API Exato: {cpf}")
+        return jsonify(user_data)
+    
+    except Exception as e:
+        app.logger.error(f"Erro ao buscar CPF na API Exato: {str(e)}")
         return jsonify({"error": f"Erro ao buscar CPF: {str(e)}"}), 500
 
 if __name__ == '__main__':
