@@ -109,7 +109,8 @@ class NovaEraPaymentsAPI:
                     timeout=30
                 )
 
-                if response.status_code == 200:
+                # A API Nova Era retorna 201 para criação bem-sucedida
+                if response.status_code in [200, 201]:
                     response_data = response.json()
                     return {
                         'id': response_data['data']['id'],
