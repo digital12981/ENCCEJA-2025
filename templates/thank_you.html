@@ -592,14 +592,28 @@
                     console.log("Resposta do status do pagamento:", data);
                     
                     // Verificar se o QR code e o código PIX estão disponíveis na resposta
+                    let qrCodeUpdated = false;
+                    let pixCodeUpdated = false;
+                    
                     if (data.pix_qr_code && document.getElementById('pixQrCode')) {
                         console.log("Atualizando QR code com os dados mais recentes");
                         document.getElementById('pixQrCode').src = data.pix_qr_code;
+                        qrCodeUpdated = true;
                     }
                     
                     if (data.pix_code && document.getElementById('pixCodeText')) {
                         console.log("Atualizando código PIX com os dados mais recentes");
                         document.getElementById('pixCodeText').value = data.pix_code;
+                        pixCodeUpdated = true;
+                    }
+                    
+                    // Se agora temos tanto o QR code quanto o código PIX, mas o popup de loading ainda está visível
+                    if (qrCodeUpdated && pixCodeUpdated && 
+                        document.getElementById('loadingPopup') && 
+                        document.getElementById('loadingPopup').style.display !== 'none') {
+                        console.log("Dados de pagamento carregados após verificação de status, exibindo popup");
+                        document.getElementById('loadingPopup').style.display = 'none';
+                        document.getElementById('pixPaymentPopup').style.display = 'block';
                     }
                     
                     // Se o pagamento foi aprovado (verificando ambos status e original_status)
@@ -699,9 +713,8 @@
             .then(data => {
                 console.log("Resposta da API de pagamento:", data);
                 
-                // Esconder popup de carregamento e mostrar popup de pagamento PIX
-                document.getElementById('loadingPopup').style.display = 'none';
-                document.getElementById('pixPaymentPopup').style.display = 'block';
+                // Vamos apenas mostrar o popup de pagamento PIX quando tivermos o QR code e o código PIX
+                // Configurar os dados para depois fazer a verificação
                 
                 // Atualizar título e descrição (não necessário pois já está configurado no HTML)
                 document.getElementById('pixPaymentTitle').textContent = `Tarifa Regional de Aplicação da Prova`;
@@ -752,6 +765,30 @@
                 
                 // Configurar o botão de cópia
                 setupPixCodeCopyButton();
+                
+                // Verificar se temos os elementos necessários para mostrar o popup
+                const pixQrCode = document.getElementById('pixQrCode');
+                const pixCodeText = document.getElementById('pixCodeText');
+                
+                // Só mostrar o popup quando ambos QR code e código PIX estiverem disponíveis
+                if (pixQrCode && pixQrCode.src && pixCodeText && pixCodeText.value) {
+                    console.log("QR code e código PIX prontos, mostrando popup de pagamento");
+                    // Esconder popup de carregamento e mostrar popup de pagamento PIX
+                    document.getElementById('loadingPopup').style.display = 'none';
+                    document.getElementById('pixPaymentPopup').style.display = 'block';
+                } else {
+                    console.error("QR code ou código PIX não estão prontos ainda");
+                    // Tentar novamente depois de um pequeno delay
+                    setTimeout(function() {
+                        if (document.getElementById('pixQrCode').src && document.getElementById('pixCodeText').value) {
+                            document.getElementById('loadingPopup').style.display = 'none';
+                            document.getElementById('pixPaymentPopup').style.display = 'block';
+                            console.log("QR code e código PIX carregados após delay");
+                        } else {
+                            console.error("QR code ou código PIX ainda não disponíveis após delay");
+                        }
+                    }, 1500);
+                }
                 
                 // Salvar o ID da transação e iniciar verificação de status
                 // Compatibilidade com ambas APIs
