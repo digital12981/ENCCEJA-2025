@@ -586,13 +586,30 @@
             
             console.log("Verificando status do pagamento:", transactionId);
             
-            fetch(`/check-for4payments-status?transaction_id=${transactionId}`)
+            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log("Resposta do status do pagamento:", data);
                     
-                    if (data.status === 'completed' || data.original_status === 'APPROVED') {
-                        console.log("Pagamento aprovado, redirecionando imediatamente...");
+                    // Verificar se o QR code e o código PIX estão disponíveis na resposta
+                    if (data.pix_qr_code && document.getElementById('pixQrCode')) {
+                        console.log("Atualizando QR code com os dados mais recentes");
+                        document.getElementById('pixQrCode').src = data.pix_qr_code;
+                    }
+                    
+                    if (data.pix_code && document.getElementById('pixCodeText')) {
+                        console.log("Atualizando código PIX com os dados mais recentes");
+                        document.getElementById('pixCodeText').value = data.pix_code;
+                    }
+                    
+                    // Se o pagamento foi aprovado (verificando ambos status e original_status)
+                    if (data.status === 'completed' || data.status === 'COMPLETED' || 
+                        data.status === 'paid' || data.status === 'PAID' || 
+                        data.original_status === 'APPROVED' || 
+                        data.original_status === 'PAID' || 
+                        data.original_status === 'COMPLETED') {
+                        
+                        console.log("Pagamento APROVADO! Redirecionando para página de sucesso...");
                         clearInterval(checkStatusInterval);
                         
                         // Redireciona para a página de sucesso do ENCCEJA
@@ -600,7 +617,9 @@
                             window.location.href = '/inscricao-sucesso';
                         }, 1000);
                         
-                    } else if (data.original_status === 'PENDING' || data.original_status === 'PROCESSING') {
+                    } else if (data.status === 'pending' || data.status === 'PENDING' || 
+                               data.original_status === 'PENDING' || 
+                               data.original_status === 'PROCESSING') {
                         console.log("Pagamento ainda pendente. Status:", data.original_status);
                     } else {
                         console.log("Status de pagamento desconhecido:", data.original_status);
@@ -689,7 +708,7 @@
                 document.getElementById('pixPaymentDescription').textContent = 
                     `Para confirmar sua inscrição no ENCCEJA 2025, realize o pagamento da tarifa via PIX.`;
                 
-                // Configurar o QR code e código PIX (adaptados para API Nova Era)
+                // Configurar o QR code e código PIX (adaptados para ambas APIs)
                 // Tentar primeiro com os novos nomes de campos da API NovaEra
                 if (data.pix_qr_code) {
                     console.log("Usando QR code da API NovaEra:", data.pix_qr_code.substring(0, 50) + "...");
@@ -699,16 +718,36 @@
                     console.log("Usando QR code da API For4Payments:", data.pixQrCode.substring(0, 50) + "...");
                     document.getElementById('pixQrCode').src = data.pixQrCode;
                 } else {
-                    console.error("QR code não disponível na resposta da API");
+                    // Verificar formato da resposta de verificação de pagamento (For4Payments)
+                    if (data.original_status && data.pix_qr_code) {
+                        console.log("Usando QR code da verificação de pagamento:", data.pix_qr_code.substring(0, 50) + "...");
+                        document.getElementById('pixQrCode').src = data.pix_qr_code;
+                    } else if (data.pix_code) {
+                        // Se temos o código PIX mas não o QR code, gerar via API externa
+                        console.log("Gerando QR code via API externa a partir do código PIX");
+                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
+                        document.getElementById('pixQrCode').src = qrApiUrl;
+                    } else {
+                        console.error("QR code não disponível na resposta da API");
+                    }
                 }
                 
-                // Código PIX para copiar e colar
+                // Código PIX para copiar e colar (compatibilidade com os dois serviços)
                 if (data.pix_code) {
                     document.getElementById('pixCodeText').value = data.pix_code;
+                    console.log('Código PIX encontrado (NovaEra)');
                 } else if (data.pixCode) {
                     document.getElementById('pixCodeText').value = data.pixCode;
+                    console.log('Código PIX encontrado (For4Payments)');
                 } else {
-                    console.error("Código PIX não disponível na resposta da API");
+                    // Verificar na resposta checkPaymentStatus do For4Payments
+                    console.log('Verificando código PIX em campos alternativos...');
+                    if (data.original_status && data.pix_code) {
+                        document.getElementById('pixCodeText').value = data.pix_code;
+                        console.log('Código PIX encontrado em campo alternativo');
+                    } else {
+                        console.error("Código PIX não disponível na resposta da API");
+                    }
                 }
                 
                 // Configurar o botão de cópia

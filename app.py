@@ -1212,15 +1212,20 @@ def verificar_pagamento():
         app.logger.error(f"[PROD] Erro ao verificar status do pagamento: {str(e)}")
         return jsonify({'error': f'Erro ao verificar status: {str(e)}', 'status': 'error'}), 500
 
-@app.route('/check-for4payments-status')
+@app.route('/check-for4payments-status', methods=['GET', 'POST'])
 @check_referer
 def check_for4payments_status():
     try:
         transaction_id = request.args.get('transaction_id')
         
         if not transaction_id:
-            app.logger.error("[PROD] ID da transação não fornecido")
-            return jsonify({'error': 'ID da transação é obrigatório'}), 400
+            # Verificar se foi enviado no corpo da requisição (compatibilidade)
+            data = request.get_json(silent=True)
+            if data and data.get('id'):
+                transaction_id = data.get('id')
+            else:
+                app.logger.error("[PROD] ID da transação não fornecido")
+                return jsonify({'error': 'ID da transação é obrigatório'}), 400
             
         app.logger.info(f"[PROD] Verificando status do pagamento: {transaction_id}")
         
