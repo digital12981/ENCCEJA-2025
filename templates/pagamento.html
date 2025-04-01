@@ -182,76 +182,98 @@
                 
                 // Processar os dados de pagamento
                     // Mostrar dados de pagamento
-                    if (data.pixQrCode) {
-                        console.log('QR code recebido, processando...');
-                        try {
-                            // Limpar possíveis caracteres indesejados na string base64
-                            const cleanBase64 = data.pixQrCode.replace(/^['"]|['"]$/g, '').trim();
-                            console.log('Base64 limpo, primeiros 20 caracteres:', cleanBase64.substring(0, 20) + '...');
-                            
-                            // Verificar se já tem o prefixo data:image
-                            if (cleanBase64.startsWith('data:image')) {
-                                document.getElementById('qr-code-img').src = cleanBase64;
-                            } else {
-                                document.getElementById('qr-code-img').src = `data:image/png;base64,${cleanBase64}`;
-                            }
-                            
-                            // Adicionar listener para detectar erros de carregamento da imagem
-                            const imgElement = document.getElementById('qr-code-img');
-                            imgElement.onerror = function() {
-                                console.error('Erro ao carregar QR code - imagem inválida');
-                                // Gerar QR code alternativo usando uma biblioteca externa
-                                document.getElementById('qr-code-container').classList.remove('hidden');
-                                
-                                // Se tiver o código PIX, usar uma biblioteca alternativa para gerar QR
-                                if (data.pixCode) {
-                                    const pixValue = data.pixCode;
-                                    const pixCodeElement = document.getElementById('pix-code');
-                                    
-                                    // Usar API externa para gerar QR code a partir do texto
-                                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
-                                    imgElement.src = qrApiUrl;
-                                    console.log('Usando QR code alternativo via API');
-                                } else {
-                                    // Não foi possível gerar o QR code
-                                    document.getElementById('qr-code-container').classList.add('hidden');
+                    console.log('Processando dados de pagamento:', data);
+                    
+                    // Verificar QR code (API Nova Era usa URL direta para QR code)
+                    if (data.qr_code) {
+                        console.log('QR code via URL recebido:', data.qr_code.substring(0, 50) + '...');
+                        
+                        // Verificar se é uma URL ou imagem em base64
+                        if (data.qr_code.startsWith('http')) {
+                            // É uma URL para imagem ou API QR
+                            document.getElementById('qr-code-img').src = data.qr_code;
+                            console.log('Usando QR code via URL externa');
+                        } else if (data.qr_code.startsWith('data:image')) {
+                            // É uma imagem base64
+                            document.getElementById('qr-code-img').src = data.qr_code;
+                            console.log('Usando QR code via dados base64');
+                        } else {
+                            // Tentar como base64 simples
+                            try {
+                                document.getElementById('qr-code-img').src = `data:image/png;base64,${data.qr_code.replace(/^['"]|['"]$/g, '').trim()}`;
+                                console.log('Usando QR code como base64 puro');
+                            } catch (e) {
+                                console.error('Erro ao processar QR code como base64:', e);
+                                // Fallback para serviço externo se tiver código PIX
+                                if (data.pix_code) {
+                                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
+                                    document.getElementById('qr-code-img').src = qrApiUrl;
+                                    console.log('Usando serviço externo para gerar QR code');
                                 }
-                            };
-                            
-                            // Mostrar o container
-                            document.getElementById('qr-code-container').classList.remove('hidden');
-                            console.log('Container de QR code visível');
-                            
-                        } catch (error) {
-                            console.error('Erro ao processar QR code:', error);
-                            // Tentar abordagem alternativa com API de QR
-                            if (data.pixCode) {
-                                const pixValue = data.pixCode;
-                                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
-                                document.getElementById('qr-code-img').src = qrApiUrl;
-                                document.getElementById('qr-code-container').classList.remove('hidden');
-                                console.log('Usando gerador de QR code alternativo após erro');
-                            } else {
-                                document.getElementById('qr-code-container').classList.add('hidden');
                             }
                         }
-                    } else if (data.pixCode) {
-                        // Se não tem QR code mas tem o código PIX, gerar QR code a partir do código
-                        console.log('Sem QR code na resposta, mas temos código PIX. Gerando QR...');
-                        const pixValue = data.pixCode;
-                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixValue)}`;
+                        
+                        // Adicionar tratamento de erro para a imagem
+                        const imgElement = document.getElementById('qr-code-img');
+                        imgElement.onerror = function() {
+                            console.error('Erro ao carregar QR code - imagem inválida');
+                            // Tentar com serviço externo se tivermos o código PIX
+                            if (data.pix_code) {
+                                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
+                                imgElement.src = qrApiUrl;
+                                console.log('Usando QR code alternativo via API após erro');
+                            } else {
+                                // Não temos código PIX, ocultar QR code
+                                document.getElementById('qr-code-container').classList.add('hidden');
+                            }
+                        };
+                        
+                        // Mostrar o container
+                        document.getElementById('qr-code-container').classList.remove('hidden');
+                        
+                    } else if (data.pix_code) {
+                        // Não temos QR code, mas temos código PIX
+                        console.log('Sem QR code na resposta, mas temos código PIX. Gerando QR via API externa...');
+                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
                         document.getElementById('qr-code-img').src = qrApiUrl;
                         document.getElementById('qr-code-container').classList.remove('hidden');
                     } else {
-                        // Se não tem nem QR code nem código PIX, ocultar a seção
-                        console.log('Sem QR code e sem código PIX na resposta');
-                        document.getElementById('qr-code-container').classList.add('hidden');
+                        // Não temos nem QR code nem código PIX
+                        console.error('Sem QR code e sem código PIX na resposta, verificando nomes alternativos...');
+                        
+                        // Tentar nomes alternativos para compatibilidade
+                        if (data.pixQrCode || data.pixCode) {
+                            const qrCode = data.pixQrCode;
+                            const pixCode = data.pixCode;
+                            
+                            if (qrCode) {
+                                document.getElementById('qr-code-img').src = qrCode;
+                                document.getElementById('qr-code-container').classList.remove('hidden');
+                                console.log('Usando QR code de campo alternativo (pixQrCode)');
+                            } else if (pixCode) {
+                                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixCode)}`;
+                                document.getElementById('qr-code-img').src = qrApiUrl;
+                                document.getElementById('qr-code-container').classList.remove('hidden');
+                                console.log('Gerando QR code a partir de campo alternativo (pixCode)');
+                            }
+                        } else {
+                            console.error('Sem QR code e sem código PIX em nenhum campo conhecido');
+                            document.getElementById('qr-code-container').classList.add('hidden');
+                        }
                     }
                     
-                    if (data.pixCode) {
+                    // Verificar código PIX para copiar e colar (adaptado para API NovaEra)
+                    if (data.pix_code) {
+                        document.getElementById('pix-code').textContent = data.pix_code;
+                        document.getElementById('pix-code-container').classList.remove('hidden');
+                        console.log('Código PIX disponível para cópia');
+                    } else if (data.pixCode) {
+                        // Compatibilidade com campo antigo
                         document.getElementById('pix-code').textContent = data.pixCode;
                         document.getElementById('pix-code-container').classList.remove('hidden');
+                        console.log('Código PIX disponível para cópia (campo alternativo)');
                     } else {
+                        console.warn('Código PIX não disponível na resposta');
                         document.getElementById('pix-code-container').classList.add('hidden');
                     }
                     

@@ -668,14 +668,17 @@ def payment():
         if phone:
             send_sms(phone, nome, amount)
 
-        # Obter QR code e PIX code da resposta da API
-        qr_code = pix_data.get('pixQrCode') or pix_data.get('pix_qr_code')
-        pix_code = pix_data.get('pixCode') or pix_data.get('pix_code')
+        # Obter QR code e PIX code da resposta da API (adaptado para a estrutura da API NovaEra)
+        # O QR code na NovaEra vem como URL para geração externa
+        qr_code = pix_data.get('pix_qr_code')  # URL já formada para API externa
+        pix_code = pix_data.get('pix_code')    # Código PIX para copiar e colar
         
-        # Garantir que temos valores válidos
-        if not qr_code:
-            # Gerar QR code com biblioteca qrcode
-            import qrcode
+        # Log detalhado para depuração
+        app.logger.info(f"[PROD] Dados PIX recebidos da API: {pix_data}")
+        
+        # Garantir que temos valores válidos para exibição
+        if not qr_code and pix_code:
+            # Gerar QR code com biblioteca qrcode se tivermos o código PIX mas não o QR
             import qrcode
             from qrcode import constants
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -685,10 +688,12 @@ def payment():
             buffered = BytesIO()
             img.save(buffered, format="PNG")
             qr_code = "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
+            app.logger.info("[PROD] QR code gerado localmente a partir do código PIX")
             
+        # Verificar possíveis nomes alternativos para o código PIX caso esteja faltando
         if not pix_code:
-            # Algumas APIs podem usar outros nomes para o código PIX
             pix_code = pix_data.get('copy_paste') or pix_data.get('code') or ''
+            app.logger.info("[PROD] Código PIX obtido de campo alternativo")
         
         # Log detalhado para depuração
         app.logger.info(f"[PROD] QR code: {qr_code[:50]}... (truncado)")
