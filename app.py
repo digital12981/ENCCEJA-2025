@@ -1201,20 +1201,18 @@ def check_for4payments_status():
             app.logger.error("[PROD] ID da transação não fornecido")
             return jsonify({'error': 'ID da transação é obrigatório'}), 400
             
-        app.logger.info(f"[PROD] Verificando status do pagamento com For4Payments: {transaction_id}")
+        app.logger.info(f"[PROD] Verificando status do pagamento: {transaction_id}")
         
-        # Usar a API For4Payments especificamente
-        from for4payments2 import create_payment_api
-        
+        # Usar o gateway de pagamento configurado
         try:
-            api = create_payment_api()
+            api = get_payment_gateway()
         except ValueError as e:
-            app.logger.error(f"[PROD] Erro ao inicializar API For4Payments: {str(e)}")
+            app.logger.error(f"[PROD] Erro ao inicializar gateway de pagamento: {str(e)}")
             return jsonify({'error': 'Serviço de pagamento indisponível no momento.'}), 500
         
         # Verificar status do pagamento
         status_result = api.check_payment_status(transaction_id)
-        app.logger.info(f"[PROD] Status do pagamento com For4Payments: {status_result}")
+        app.logger.info(f"[PROD] Status do pagamento: {status_result}")
         
         # Verificar se o pagamento foi aprovado
         if status_result.get('status') == 'completed' or status_result.get('original_status') in ['APPROVED', 'PAID']:
@@ -1223,7 +1221,7 @@ def check_for4payments_status():
             cpf = request.args.get('cpf', '')
             phone = request.args.get('phone', '')
             
-            app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado via For4Payments. Enviando SMS com link de agradecimento.")
+            app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado. Enviando SMS com link de agradecimento.")
             
             # Construir o URL personalizado para a página de agradecimento
             thank_you_url = request.url_root.rstrip('/') + '/obrigado'
@@ -1266,7 +1264,7 @@ def check_for4payments_status():
         return jsonify(status_result)
         
     except Exception as e:
-        app.logger.error(f"[PROD] Erro ao verificar status do pagamento com For4Payments: {str(e)}")
+        app.logger.error(f"[PROD] Erro ao verificar status do pagamento: {str(e)}")
         return jsonify({'status': 'pending', 'error': str(e)})
 
 @app.route('/send-verification-code', methods=['POST'])
@@ -1454,22 +1452,26 @@ def pagamento_encceja():
         
         try:
             if has_discount:
-                # Usar API de pagamento com desconto
+                # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
-                payment_api = create_payment_with_discount_api()
-                payment_result = payment_api.create_pix_payment_with_discount({
-                    'nome': nome,
+                payment_api = get_payment_gateway()
+                payment_result = payment_api.create_pix_payment({
+                    'name': nome,
                     'cpf': cpf,
-                    'telefone': telefone
+                    'phone': telefone,
+                    'amount': 49.70,
+                    'email': f"{nome.lower().replace(' ', '')}@gmail.com"
                 })
             else:
-                # Usar API de pagamento padrão
+                # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
-                payment_api = create_payment_api()
-                payment_result = payment_api.create_encceja_payment({
-                    'nome': nome,
+                payment_api = get_payment_gateway()
+                payment_result = payment_api.create_pix_payment({
+                    'name': nome,
                     'cpf': cpf,
-                    'telefone': telefone
+                    'phone': telefone,
+                    'amount': 73.40,
+                    'email': f"{nome.lower().replace(' ', '')}@gmail.com"
                 })
             
             # Retornar os dados do pagamento

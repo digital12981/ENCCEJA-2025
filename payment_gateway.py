@@ -5,7 +5,7 @@ from typing import Union
 
 def get_payment_gateway() -> Union[NovaEraPaymentsAPI, For4PaymentsAPI]:
     """Factory function to create the appropriate payment gateway instance based on GATEWAY_CHOICE"""
-    gateway_choice = os.environ.get("GATEWAY_CHOICE", "FOR4").upper()
+    gateway_choice = os.environ.get("GATEWAY_CHOICE", "NOVAERA").upper()
     
     if gateway_choice == "NOVAERA":
         return create_novaera_api()
