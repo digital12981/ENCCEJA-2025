@@ -1126,26 +1126,36 @@ def create_pix_payment():
         
         app.logger.info(f"[PROD] Iniciando criação de pagamento PIX: {data}")
         
-        # Usar a API For4Payments especificamente
-        from for4payments2 import create_payment_api
+        # Usar a API NovaEra (padrão da aplicação via payment_gateway)
+        from payment_gateway import get_payment_gateway
         
         try:
-            api = create_payment_api()
-            app.logger.info("[PROD] API For4Payments inicializada com sucesso")
+            # Obtém o gateway padrão configurado que deve ser NovaEra
+            api = get_payment_gateway()
+            app.logger.info("[PROD] API de pagamento inicializada com sucesso")
         except ValueError as e:
-            app.logger.error(f"[PROD] Erro ao inicializar API For4Payments: {str(e)}")
+            app.logger.error(f"[PROD] Erro ao inicializar API de pagamento: {str(e)}")
             return jsonify({'error': 'Serviço de pagamento indisponível no momento. Tente novamente mais tarde.'}), 500
         
         # Criar o pagamento PIX
         try:
-            payment_result = api.create_pix_payment(data)
+            # Padronizar os nomes dos campos para corresponder ao esperado pela API
+            payment_data = {
+                'name': data.get('name'),
+                'email': data.get('email', ''),
+                'cpf': data.get('cpf'),
+                'phone': data.get('phone', ''),
+                'amount': data.get('amount')
+            }
+            
+            payment_result = api.create_pix_payment(payment_data)
             app.logger.info(f"[PROD] Pagamento PIX criado com sucesso: {payment_result}")
             
-            # Construir resposta
+            # Construir resposta com suporte a ambos formatos (NovaEra e For4Payments)
             response = {
                 'transaction_id': payment_result.get('id'),
-                'pix_code': payment_result.get('pixCode'),
-                'pix_qr_code': payment_result.get('pixQrCode'),
+                'pix_code': payment_result.get('pix_code'),
+                'pix_qr_code': payment_result.get('pix_qr_code'),
                 'status': payment_result.get('status', 'pending')
             }
             

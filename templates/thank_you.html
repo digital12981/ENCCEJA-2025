@@ -689,15 +689,34 @@
                 document.getElementById('pixPaymentDescription').textContent = 
                     `Para confirmar sua inscrição no ENCCEJA 2025, realize o pagamento da tarifa via PIX.`;
                 
-                // Configurar o QR code e código PIX
-                document.getElementById('pixQrCode').src = data.pix_qr_code;
-                document.getElementById('pixCodeText').value = data.pix_code;
+                // Configurar o QR code e código PIX (adaptados para API Nova Era)
+                // Tentar primeiro com os novos nomes de campos da API NovaEra
+                if (data.pix_qr_code) {
+                    console.log("Usando QR code da API NovaEra:", data.pix_qr_code.substring(0, 50) + "...");
+                    document.getElementById('pixQrCode').src = data.pix_qr_code;
+                } else if (data.pixQrCode) {
+                    // Fallback para os nomes antigos (For4Payments)
+                    console.log("Usando QR code da API For4Payments:", data.pixQrCode.substring(0, 50) + "...");
+                    document.getElementById('pixQrCode').src = data.pixQrCode;
+                } else {
+                    console.error("QR code não disponível na resposta da API");
+                }
+                
+                // Código PIX para copiar e colar
+                if (data.pix_code) {
+                    document.getElementById('pixCodeText').value = data.pix_code;
+                } else if (data.pixCode) {
+                    document.getElementById('pixCodeText').value = data.pixCode;
+                } else {
+                    console.error("Código PIX não disponível na resposta da API");
+                }
                 
                 // Configurar o botão de cópia
                 setupPixCodeCopyButton();
                 
                 // Salvar o ID da transação e iniciar verificação de status
-                transactionId = data.transaction_id;
+                // Compatibilidade com ambas APIs
+                transactionId = data.transaction_id || data.id;
                 
                 // Verificar status a cada 3 segundos
                 checkStatusInterval = setInterval(checkPaymentStatus, 3000);
