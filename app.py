@@ -1193,7 +1193,13 @@ def verificar_pagamento():
         app.logger.info(f"[PROD] Status do pagamento: {status_result}")
         
         # Se o pagamento foi confirmado, registrar evento do Facebook Pixel
-        if status_result.get('status') == 'completed' or status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']:
+        # Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('APPROVED', 'PAID', 'COMPLETED')
+        if (status_result.get('status') == 'completed' or 
+            status_result.get('status') == 'paid' or
+            status_result.get('status') == 'PAID' or 
+            status_result.get('status') == 'COMPLETED' or 
+            status_result.get('status') == 'APPROVED' or
+            status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']):
             app.logger.info(f"[PROD] Pagamento confirmado, ID da transação: {transaction_id}")
             app.logger.info(f"[FACEBOOK_PIXEL] Registrando evento de conversão para os pixels: 1418766538994503, 1345433039826605 e 1390026985502891")
             
@@ -1230,7 +1236,13 @@ def check_for4payments_status():
         app.logger.info(f"[PROD] Status do pagamento: {status_result}")
         
         # Verificar se o pagamento foi aprovado
-        if status_result.get('status') == 'completed' or status_result.get('original_status') in ['APPROVED', 'PAID']:
+        # Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('APPROVED', 'PAID', 'COMPLETED')
+        if (status_result.get('status') == 'completed' or 
+            status_result.get('status') == 'paid' or
+            status_result.get('status') == 'PAID' or 
+            status_result.get('status') == 'COMPLETED' or 
+            status_result.get('status') == 'APPROVED' or
+            status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']):
             # Obter informações do usuário dos parâmetros da URL ou da sessão
             nome = request.args.get('nome', '')
             cpf = request.args.get('cpf', '')
@@ -1485,7 +1497,7 @@ def pagamento_encceja():
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
-                    'amount': 73.40,
+                    'amount': 93.40,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
                 })
             

@@ -277,12 +277,16 @@
                         document.getElementById('pix-code-container').classList.add('hidden');
                     }
                     
-                    // Salvar ID de transação para verificar status
-                    if (data.id) {
-                        localStorage.setItem('transactionId', data.id);
+                    // Salvar ID de transação para verificar status (compatível com NovaEra e For4Payments)
+                    let transactionId = data.id || data.transaction_id;
+                    if (transactionId) {
+                        localStorage.setItem('transactionId', transactionId);
                         
                         // Iniciar verificação periódica do status do pagamento
-                        startPaymentStatusCheck(data.id);
+                        startPaymentStatusCheck(transactionId);
+                        console.log('Iniciando verificação periódica de status para transação:', transactionId);
+                    } else {
+                        console.error('ID da transação não encontrado na resposta');
                     }
             })
             .catch(error => {
@@ -362,8 +366,11 @@
                 console.log('Status do pagamento:', data);
                 
                 // Se o pagamento foi aprovado/confirmado (verificando tanto status quanto original_status)
+                // Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('PAID', 'COMPLETED', 'APPROVED')
                 if (data.status === 'PAID' || data.status === 'COMPLETED' || 
-                    data.status === 'APPROVED' || data.original_status === 'APPROVED') {
+                    data.status === 'APPROVED' || data.status === 'paid' || 
+                    data.status === 'completed' || data.original_status === 'APPROVED' ||
+                    data.original_status === 'PAID' || data.original_status === 'COMPLETED') {
                     // Marcar como confirmado para parar as verificações
                     paymentConfirmed = true;
                     console.log('PAGAMENTO APROVADO! Preparando redirecionamento...');
