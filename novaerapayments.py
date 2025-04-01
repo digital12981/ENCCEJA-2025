@@ -143,15 +143,34 @@ class NovaEraPaymentsAPI:
 
             if response.status_code == 200:
                 payment_data = response.json()
-                return {
-                    'status': payment_data['data']['status'],
-                    'pix_qr_code': payment_data['data']['pix']['qrcode'],
-                    'pix_code': payment_data['data']['pix']['qrcode']
+                current_app.logger.info(f"[DEBUG] Resposta completa da API NovaEra: {payment_data}")
+                
+                # Constrói a resposta padrão
+                result = {
+                    'status': payment_data['data']['status']
                 }
+
+                # Adiciona campos adicionais, se disponíveis
+                try:
+                    if 'pix' in payment_data['data'] and 'qrcode' in payment_data['data']['pix']:
+                        result['pix_qr_code'] = payment_data['data']['pix']['qrcode']
+                        result['pix_code'] = payment_data['data']['pix']['qrcode']
+                except Exception as e:
+                    current_app.logger.error(f"[ERROR] Erro ao acessar campos de PIX: {str(e)}")
+                
+                # Se o status for 'paid', retornar essa informação explicitamente para compatibilidade
+                # Para compatibilidade com a estrutura esperada pelo frontend
+                if payment_data['data']['status'] == 'paid':
+                    result['status'] = 'paid'
+                    current_app.logger.info(f"[INFO] Pagamento com ID {payment_id} confirmado como PAGO")
+                
+                return result
             else:
+                current_app.logger.error(f"[ERROR] Erro ao verificar status do pagamento: {response.status_code} - {response.text}")
                 return {'status': 'pending'}
 
-        except Exception:
+        except Exception as e:
+            current_app.logger.error(f"[ERROR] Exceção ao verificar status do pagamento: {str(e)}")
             return {'status': 'pending'}
 
 

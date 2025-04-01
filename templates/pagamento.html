@@ -364,6 +364,7 @@
             .then(response => response.json())
             .then(data => {
                 console.log('Status do pagamento:', data);
+                console.log('Status recebido:', data.status);
                 
                 // Se o pagamento foi aprovado/confirmado (verificando tanto status quanto original_status)
                 // Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('PAID', 'COMPLETED', 'APPROVED')
@@ -371,6 +372,9 @@
                     data.status === 'APPROVED' || data.status === 'paid' || 
                     data.status === 'completed' || data.original_status === 'APPROVED' ||
                     data.original_status === 'PAID' || data.original_status === 'COMPLETED') {
+                    
+                    console.log('PAGAMENTO VERIFICADO COMO PAGO!');
+                    console.log('Redirecionando para a página de agradecimento...');
                     // Marcar como confirmado para parar as verificações
                     paymentConfirmed = true;
                     console.log('PAGAMENTO APROVADO! Preparando redirecionamento...');
