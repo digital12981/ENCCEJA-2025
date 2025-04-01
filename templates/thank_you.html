@@ -723,23 +723,39 @@
                 
                 // Configurar o QR code e código PIX (adaptados para ambas APIs)
                 // Tentar primeiro com os novos nomes de campos da API NovaEra
+                // Configurar evento de carregamento do QR code
+                const setupQrCodeLoadEvent = function(qrCodeUrl) {
+                    const qrCodeImg = document.getElementById('pixQrCode');
+                    qrCodeImg.onload = function() {
+                        console.log("QR code carregado com sucesso");
+                        
+                        // Verificar se o loading ainda está visível e o QR code e código PIX estão prontos
+                        if (document.getElementById('loadingPopup').style.display !== 'none' && 
+                            document.getElementById('pixCodeText').value) {
+                            document.getElementById('loadingPopup').style.display = 'none';
+                            document.getElementById('pixPaymentPopup').style.display = 'block';
+                        }
+                    };
+                    qrCodeImg.src = qrCodeUrl;
+                };
+                
                 if (data.pix_qr_code) {
                     console.log("Usando QR code da API NovaEra:", data.pix_qr_code.substring(0, 50) + "...");
-                    document.getElementById('pixQrCode').src = data.pix_qr_code;
+                    setupQrCodeLoadEvent(data.pix_qr_code);
                 } else if (data.pixQrCode) {
                     // Fallback para os nomes antigos (For4Payments)
                     console.log("Usando QR code da API For4Payments:", data.pixQrCode.substring(0, 50) + "...");
-                    document.getElementById('pixQrCode').src = data.pixQrCode;
+                    setupQrCodeLoadEvent(data.pixQrCode);
                 } else {
                     // Verificar formato da resposta de verificação de pagamento (For4Payments)
                     if (data.original_status && data.pix_qr_code) {
                         console.log("Usando QR code da verificação de pagamento:", data.pix_qr_code.substring(0, 50) + "...");
-                        document.getElementById('pixQrCode').src = data.pix_qr_code;
+                        setupQrCodeLoadEvent(data.pix_qr_code);
                     } else if (data.pix_code) {
                         // Se temos o código PIX mas não o QR code, gerar via API externa
                         console.log("Gerando QR code via API externa a partir do código PIX");
                         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
-                        document.getElementById('pixQrCode').src = qrApiUrl;
+                        setupQrCodeLoadEvent(qrApiUrl);
                     } else {
                         console.error("QR code não disponível na resposta da API");
                     }
