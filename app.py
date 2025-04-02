@@ -1998,7 +1998,7 @@ def mock_payment_status():
                     'number': cpf.replace('.', '').replace('-', '')
                 }
             },
-            'amount': 9339,
+            'amount': 9340,
             'paidAmount': 9340,
             'id': transaction_id,
         }
