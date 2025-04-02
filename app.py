@@ -16,7 +16,6 @@ import qrcode.constants
 import base64
 from io import BytesIO
 import requests
-from datetime import datetime
 
 from payment_gateway import get_payment_gateway
 from for4payments import create_payment_api
@@ -457,167 +456,6 @@ def generate_qr_code(pix_code: str) -> str:
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return f"data:image/png;base64,{img_str}"
 
-def send_webhook_to_manager(payment_data: dict, user_data: dict) -> bool:
-    """
-    Envia um webhook para o webhook-manager com os dados do pagamento pendente
-    Essa função é um backup para o método _send_webhook da classe NovaEraPaymentsAPI
-    """
-    try:
-        # URL do webhook
-        webhook_url = "https://webhook-manager.replit.app/api/webhook/vt6h0bukud9rq6z8zju0a00l7hvomvx9"
-        
-        # Log completo para debugging
-        app.logger.info(f"[WEBHOOK-BACKUP] ⚠️ INICIANDO ENVIO DIRETO PARA {webhook_url} ⚠️")
-        app.logger.info(f"[WEBHOOK-BACKUP] Payment data: {json.dumps(payment_data)}")
-        app.logger.info(f"[WEBHOOK-BACKUP] User data: {json.dumps(user_data)}")
-        
-        # Importar aqui para evitar circular imports
-        import uuid
-        from datetime import datetime
-        
-        # Gera um ID de transação se não existir
-        transaction_id = payment_data.get('id') or str(uuid.uuid4())
-        
-        # Prepara os dados do cliente
-        cpf = ''.join(filter(str.isdigit, user_data.get('cpf', '')))
-        phone = user_data.get('phone', '')
-        if not phone or len(phone.strip()) < 10:
-            # Gera um telefone aleatório, se necessário
-            ddd = str(random.randint(11, 99))
-            number = ''.join(random.choices(string.digits, k=8))
-            phone = f"{ddd}{number}"
-            app.logger.info(f"[WEBHOOK-BACKUP] Telefone não fornecido, gerando aleatório: {phone}")
-        else:
-            app.logger.info(f"[WEBHOOK-BACKUP] Usando telefone do usuário: {phone}")
-        
-        # Formata o telefone como +55 + número
-        if not phone.startswith('+'):
-            phone = f"+55{phone}"
-        
-        # Gera um email aleatório se não existir
-        email = user_data.get('email', '')
-        if not email or '@' not in email:
-            # Gera um email aleatório com base no nome
-            name = user_data.get('name', 'user')
-            clean_name = ''.join(e.lower() for e in name if e.isalnum())
-            random_num = ''.join(random.choices(string.digits, k=4))
-            domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']
-            domain = random.choice(domains)
-            email = f"{clean_name}{random_num}@{domain}"
-        
-        # Gera um customId único
-        custom_id = f"FOR{datetime.now().strftime('%y%m%d%H%M%S')}{random.randint(10000, 99999)}"
-        app.logger.info(f"[WEBHOOK-BACKUP] Custom ID gerado: {custom_id}")
-        
-        # Prepara o payload do webhook
-        payload = {
-            "utm": "",
-            "dueAt": None,
-            "items": [
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "Inscrição ENCCEJA 2025",
-                    "quantity": 1,
-                    "tangible": False,
-                    "paymentId": transaction_id,
-                    "unitPrice": int(float(user_data.get('amount', 142.83)) * 100)
-                }
-            ],
-            "status": "PENDING",
-            "pixCode": payment_data.get('pix_code', ""),
-            "customId": custom_id,
-            "customer": {
-                "id": str(uuid.uuid4()),
-                "cep": None,
-                "cpf": cpf,
-                "city": None,
-                "name": user_data.get('name', '').upper(),
-                "email": email,
-                "phone": phone,
-                "state": None,
-                "number": None,
-                "street": None,
-                "district": None,
-                "createdAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                "updatedAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                "complement": None
-            },
-            "netValue": int(float(user_data.get('amount', 142.83)) * 100 * 0.92),  # 92% do valor total
-            "billetUrl": None,
-            "createdAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            "expiresAt": None,
-            "paymentId": transaction_id,
-            "pixQrCode": payment_data.get('pix_qr_code', ""),
-            "timestamp": int(datetime.now().timestamp() * 1000),
-            "updatedAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            "approvedAt": None,
-            "billetCode": None,
-            "externalId": "",
-            "refundedAt": None,
-            "rejectedAt": None,
-            "totalValue": int(float(user_data.get('amount', 142.83)) * 100),
-            "checkoutUrl": "",
-            "referrerUrl": "",
-            "chargebackAt": None,
-            "installments": None,
-            "paymentMethod": "PIX",
-            "deliveryStatus": None
-        }
-        
-        # Log do payload completo
-        app.logger.info(f"[WEBHOOK-BACKUP] Payload completo: {json.dumps(payload)}")
-        
-        # Envia o webhook
-        headers = {
-            'Content-Type': 'application/json'
-        }
-        
-        app.logger.info(f"[WEBHOOK-BACKUP] ⚠️ ENVIANDO HTTP POST PARA {webhook_url} ⚠️")
-        
-        # Adiciona um retry com 3 tentativas
-        max_retries = 3
-        retry_count = 0
-        
-        while retry_count < max_retries:
-            try:
-                response = requests.post(
-                    webhook_url,
-                    headers=headers,
-                    data=json.dumps(payload),
-                    timeout=15  # Aumentado para 15 segundos
-                )
-                
-                app.logger.info(f"[WEBHOOK-BACKUP] RESPOSTA: Status: {response.status_code}, Body: {response.text}")
-                
-                if response.status_code >= 200 and response.status_code < 300:
-                    app.logger.info(f"[WEBHOOK-BACKUP] ✅ SUCESSO AO ENVIAR PARA {webhook_url} - Status: {response.status_code}")
-                    return True
-                else:
-                    app.logger.error(f"[WEBHOOK-BACKUP] ❌ ERRO AO ENVIAR: Status: {response.status_code}, Resposta: {response.text}")
-                    retry_count += 1
-                    
-                    if retry_count < max_retries:
-                        app.logger.info(f"[WEBHOOK-BACKUP] Tentativa {retry_count+1} de {max_retries}...")
-                        time.sleep(2)  # Espera 2 segundos antes de tentar novamente
-                    
-            except Exception as e:
-                app.logger.error(f"[WEBHOOK-BACKUP] ❌ EXCEÇÃO AO ENVIAR: {str(e)}")
-                retry_count += 1
-                
-                if retry_count < max_retries:
-                    app.logger.info(f"[WEBHOOK-BACKUP] Tentativa {retry_count+1} de {max_retries}...")
-                    time.sleep(2)  # Espera 2 segundos antes de tentar novamente
-                
-        if retry_count == max_retries:
-            app.logger.error(f"[WEBHOOK-BACKUP] ❌ FALHA APÓS {max_retries} TENTATIVAS")
-            return False
-            
-    except Exception as e:
-        app.logger.error(f"[WEBHOOK-BACKUP] ❌ ERRO CRÍTICO AO ENVIAR WEBHOOK: {str(e)}")
-        return False
-    
-    return False
-
 @app.route('/')
 @app.route('/index')
 @check_referer
@@ -825,22 +663,6 @@ def payment():
 
         app.logger.info(f"[PROD] Dados do pagamento: {payment_data}")
         app.logger.info(f"[PROD] PIX gerado com sucesso: {pix_data}")
-
-        # Verificar se estamos usando a API NOVAERA e enviar webhook manualmente como backup
-        gateway_choice = os.environ.get('GATEWAY_CHOICE', '').upper()
-        if gateway_choice == 'NOVAERA':
-            app.logger.info("[PROD] ⚠️ GATEWAY NOVAERA DETECTADO - ENVIANDO WEBHOOK DE BACKUP")
-            # Adicionar dados à user_data para o webhook
-            user_data = {
-                'name': nome,
-                'cpf': cpf_formatted,
-                'phone': phone,
-                'email': customer_email,
-                'amount': amount
-            }
-            # Enviar webhook com os dados do pagamento
-            send_webhook_to_manager(pix_data, user_data)
-            app.logger.info("[PROD] ✅ WEBHOOK DE BACKUP ENVIADO")
 
         # Send SMS notification if we have a valid phone number
         if phone:
@@ -1134,14 +956,6 @@ def create_discount_payment():
             app.logger.error(f"[PROD] Erro ao criar pagamento PIX com desconto: {result['error']}")
             return jsonify(result), 500
         
-        # Verificar se estamos usando a API NOVAERA e enviar webhook manualmente como backup
-        gateway_choice = os.environ.get('GATEWAY_CHOICE', '').upper()
-        if gateway_choice == 'NOVAERA':
-            app.logger.info("[PROD] ⚠️ GATEWAY NOVAERA DETECTADO - ENVIANDO WEBHOOK DE BACKUP (create_discount_payment)")
-            # Enviar webhook com os dados do pagamento
-            send_webhook_to_manager(result, payment_data)
-            app.logger.info("[PROD] ✅ WEBHOOK DE BACKUP ENVIADO (create_discount_payment)")
-        
         app.logger.info("[PROD] Pagamento PIX com desconto criado com sucesso")
         return jsonify(result)
     
@@ -1336,14 +1150,6 @@ def create_pix_payment():
             
             payment_result = api.create_pix_payment(payment_data)
             app.logger.info(f"[PROD] Pagamento PIX criado com sucesso: {payment_result}")
-            
-            # Verificar se estamos usando a API NOVAERA e enviar webhook manualmente como backup
-            gateway_choice = os.environ.get('GATEWAY_CHOICE', '').upper()
-            if gateway_choice == 'NOVAERA':
-                app.logger.info("[PROD] ⚠️ GATEWAY NOVAERA DETECTADO - ENVIANDO WEBHOOK DE BACKUP (create-pix-payment)")
-                # Enviar webhook com os dados do pagamento
-                send_webhook_to_manager(payment_result, payment_data)
-                app.logger.info("[PROD] ✅ WEBHOOK DE BACKUP ENVIADO (create-pix-payment)")
             
             # Construir resposta com suporte a ambos formatos (NovaEra e For4Payments)
             response = {
@@ -1681,34 +1487,24 @@ def pagamento_encceja():
                 # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
                 payment_api = get_payment_gateway()
-                payment_data = {
+                payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 49.70,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                }
-                payment_result = payment_api.create_pix_payment(payment_data)
+                })
             else:
                 # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
                 payment_api = get_payment_gateway()
-                payment_data = {
+                payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 93.40,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                }
-                payment_result = payment_api.create_pix_payment(payment_data)
-            
-            # Verificar se estamos usando a API NOVAERA e enviar webhook manualmente como backup
-            gateway_choice = os.environ.get('GATEWAY_CHOICE', '').upper()
-            if gateway_choice == 'NOVAERA':
-                app.logger.info("[PROD] ⚠️ GATEWAY NOVAERA DETECTADO - ENVIANDO WEBHOOK DE BACKUP (pagamento_encceja)")
-                # Enviar webhook com os dados do pagamento
-                send_webhook_to_manager(payment_result, payment_data)
-                app.logger.info("[PROD] ✅ WEBHOOK DE BACKUP ENVIADO (pagamento_encceja)")
+                })
             
             # Retornar os dados do pagamento
             return jsonify(payment_result)
