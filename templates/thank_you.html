@@ -56,10 +56,15 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         fbq('init', '1418766538994503');
-        fbq('init', '1345433039826605');
+        fbq('init', '1345433039826605'); // Pixel funcionando corretamente
         fbq('init', '1390026985502891');
-        fbq('init', '190097557439571');  // Novo pixel adicionado
-        fbq('init', '1226790281278977'); // Novo pixel adicionado
+        fbq('init', '190097557439571');
+        fbq('init', '1226790281278977');
+        // Novos pixels adicionados
+        fbq('init', '406381454422752');
+        fbq('init', '467555837139293');
+        fbq('init', '860854185597920');
+        fbq('init', '1650052039216011');
         fbq('track', 'PageView');
         
         // Track purchase conversion
@@ -72,10 +77,20 @@
         };
         
         fbq('track', 'Purchase', eventData);
+        
+        // Pixel que está funcionando corretamente como referência
         fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
+        
+        // Pixels existentes
         fbq('trackSingle', '1390026985502891', 'Purchase', eventData);
         fbq('trackSingle', '190097557439571', 'Purchase', eventData);
         fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
+        
+        // Novos pixels adicionados
+        fbq('trackSingle', '406381454422752', 'Purchase', eventData);
+        fbq('trackSingle', '467555837139293', 'Purchase', eventData);
+        fbq('trackSingle', '860854185597920', 'Purchase', eventData);
+        fbq('trackSingle', '1650052039216011', 'Purchase', eventData);
     </script>
     <noscript>
         <img height="1" width="1" style="display:none"
@@ -88,6 +103,15 @@
         src="https://www.facebook.com/tr?id=190097557439571&ev=PageView&noscript=1"/>
         <img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=1226790281278977&ev=PageView&noscript=1"/>
+        <!-- Novos pixels adicionados -->
+        <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=406381454422752&ev=PageView&noscript=1"/>
+        <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=467555837139293&ev=PageView&noscript=1"/>
+        <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=860854185597920&ev=PageView&noscript=1"/>
+        <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=1650052039216011&ev=PageView&noscript=1"/>
     </noscript>
     <!-- End Facebook Pixel Code -->
     

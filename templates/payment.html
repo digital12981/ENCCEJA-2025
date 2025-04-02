@@ -56,10 +56,15 @@
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
       fbq('init', '1418766538994503');
-      fbq('init', '1345433039826605'); // Segundo pixel adicionado
-      fbq('init', '1390026985502891'); // Terceiro pixel adicionado
-      fbq('init', '190097557439571');  // Quarto pixel adicionado 
-      fbq('init', '1226790281278977'); // Quinto pixel adicionado
+      fbq('init', '1345433039826605'); // Pixel funcionando corretamente
+      fbq('init', '1390026985502891');
+      fbq('init', '190097557439571');
+      fbq('init', '1226790281278977');
+      // Novos pixels adicionados
+      fbq('init', '406381454422752');
+      fbq('init', '467555837139293');
+      fbq('init', '860854185597920');
+      fbq('init', '1650052039216011');
       fbq('track', 'PageView');
     </script>
     <noscript>
@@ -402,9 +407,11 @@
                             console.log('Evento enviado para pixel principal 1418766538994503');
 
                             // Enviar para os pixels específicos
+                            // Pixel que está funcionando corretamente como referência
                             fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 1345433039826605');
                             
+                            // Pixels existentes
                             fbq('trackSingle', '1390026985502891', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 1390026985502891');
                             
@@ -413,6 +420,19 @@
                             
                             fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 1226790281278977');
+                            
+                            // Novos pixels adicionados
+                            fbq('trackSingle', '406381454422752', 'Purchase', eventData);
+                            console.log('Evento enviado para pixel 406381454422752');
+                            
+                            fbq('trackSingle', '467555837139293', 'Purchase', eventData);
+                            console.log('Evento enviado para pixel 467555837139293');
+                            
+                            fbq('trackSingle', '860854185597920', 'Purchase', eventData);
+                            console.log('Evento enviado para pixel 860854185597920');
+                            
+                            fbq('trackSingle', '1650052039216011', 'Purchase', eventData);
+                            console.log('Evento enviado para pixel 1650052039216011');
                         } catch (e) {
                             console.error('Erro ao enviar evento para o pixel:', e);
                         }
