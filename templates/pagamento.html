@@ -193,6 +193,15 @@
                 addressData 
             });
             
+            // Verificar se devemos usar um ID de mock para testes
+            const urlParams = new URLSearchParams(window.location.search);
+            const useMock = urlParams.has('mock') ? urlParams.get('mock') === 'true' : false;
+            if (useMock) {
+                // Substituir o ID da transação por um ID de mock
+                window.transactionId = 'mock-123456';
+                console.log('Usando ID de mock para testes:', window.transactionId);
+            }
+            
             // Verificar dados disponíveis e usar a melhor fonte
             const nome = paymentData.nome || userData.nome || '';
             const cpf = paymentData.cpf || userData.cpf || '';
@@ -367,6 +376,15 @@
                     
                     // Salvar ID de transação para verificar status (compatível com NovaEra e For4Payments)
                     let transactionId = data.id || data.transaction_id;
+                    
+                    // Verificar se estamos em modo de teste com mock
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const useMock = urlParams.has('mock') ? urlParams.get('mock') === 'true' : false;
+                    if (useMock) {
+                        transactionId = 'mock-123456';
+                        console.log('TESTE: Substituindo ID de transação pelo ID de mock:', transactionId);
+                    }
+                    
                     if (transactionId) {
                         localStorage.setItem('transactionId', transactionId);
                         
@@ -729,6 +747,12 @@
         
         function startPaymentStatusCheck(transactionId) {
             console.log('Iniciando verificação periódica do status de pagamento para ID:', transactionId);
+            
+            // Verificar se estamos usando um ID de mock para testes
+            const isMockId = transactionId.startsWith('mock-');
+            if (isMockId) {
+                console.log('Usando um ID de mock para testes:', transactionId);
+            }
             
             // Verificar imediatamente
             checkPaymentStatus(transactionId);

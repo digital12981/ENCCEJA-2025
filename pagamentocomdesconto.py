@@ -13,10 +13,29 @@ class PagamentoComDescontoAPI:
         self.secret_key = secret_key
 
     def _get_headers(self) -> Dict[str, str]:
+        # Lista de origens possíveis para alternar nas requisições
+        origins = [
+            'https://encceja2025.com.br',
+            'https://app.encceja2025.com.br',
+            'https://www.encceja2025.com.br',
+            'https://inscricao.encceja2025.com.br',
+            'https://portal.encceja2025.com.br',
+            'https://encceja.org.br',
+            'https://encceja-2025.com.br',
+            'https://app.encceja.org.br',
+            'https://acesso.encceja.org.br'
+        ]
+        
+        # Escolher uma origem aleatória
+        random_origin = random.choice(origins)
+        current_app.logger.info(f"[FOR4] Usando origin para requisição: {random_origin}")
+        
         return {
             'Authorization': self.secret_key,
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Origin': random_origin,
+            'Referer': f"{random_origin}/pagamento"
         }
 
     def _generate_random_email(self, name: str) -> str:
