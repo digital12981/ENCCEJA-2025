@@ -16,6 +16,7 @@ import qrcode.constants
 import base64
 from io import BytesIO
 import requests
+from typing import Dict, Any, Tuple, Optional
 
 from payment_gateway import get_payment_gateway
 from for4payments import create_payment_api
@@ -261,16 +262,13 @@ def send_sms_smsdev(phone_number: str, message: str) -> bool:
         app.logger.error(f"[PROD] Erro no envio de SMS via SMSDEV: {str(e)}")
         return False
 
-def send_sms_owen(phone_number: str, message: str) -> bool:
+def send_sms_apisms(phone_number: str, message: str, tag: str = "LoanApproval") -> bool:
     """
-    Send SMS using Owen SMS API v2 with curl
+    Send SMS using the ApisMS v2 API service
     """
     try:
-        # Get SMS API token from environment variables
-        sms_token = os.environ.get('SMS_OWEN_TOKEN')
-        if not sms_token:
-            app.logger.error("SMS_OWEN_TOKEN not found in environment variables")
-            return False
+        # Get SMS API token - usando o token fornecido
+        sms_token = "21769e0d7df4b62bd05a00ca58acffee8d7f6e41"
 
         # Format phone number (remove any non-digits and add Brazil country code)
         formatted_phone = re.sub(r'\D', '', phone_number)
@@ -292,37 +290,96 @@ def send_sms_owen(phone_number: str, message: str) -> bool:
                     "operator": "claro",  # claro, vivo ou tim
                     "destination_number": f"{international_number}",  # Número do destinatário com código internacional
                     "message": message,  # Mensagem SMS com limite de 160 caracteres
-                    "tag": "LoanApproval",  # Tag para identificação do SMS
+                    "tag": tag,  # Tag para identificação do SMS
                     "user_reply": False,  # Não receber resposta do destinatário
                     "webhook_url": ""  # Opcional para callbacks
                 })
             ]
 
             # Execute curl command
-            app.logger.info(f"Enviando SMS para {international_number} usando curl")
+            app.logger.info(f"[APISMS] Enviando SMS para {international_number} usando ApisMS API")
             payload = {
                 "operator": "claro",
                 "destination_number": international_number,
                 "message": message,
-                "tag": "LoanApproval",
+                "tag": tag,
                 "user_reply": False,
                 "webhook_url": ""
             }
-            app.logger.info(f"JSON payload: {json.dumps(payload)}")
+            app.logger.info(f"[APISMS] JSON payload: {json.dumps(payload)}")
             
             process = subprocess.run(curl_command, capture_output=True, text=True)
 
             # Log response
-            app.logger.info(f"OWEN SMS: Response for {international_number}: {process.stdout}")
-            app.logger.info(f"OWEN SMS: Error for {international_number}: {process.stderr}")
+            app.logger.info(f"[APISMS] Response for {international_number}: {process.stdout}")
+            if process.stderr:
+                app.logger.error(f"[APISMS] Error for {international_number}: {process.stderr}")
 
-            return process.returncode == 0 and "error" not in process.stdout.lower()
+            # Checar se a resposta contém "success"
+            if process.returncode == 0 and "success" in process.stdout.lower():
+                app.logger.info(f"[APISMS] SMS enviado com sucesso para {international_number}")
+                return True
+            else:
+                app.logger.error(f"[APISMS] Falha ao enviar SMS para {international_number}")
+                return False
         else:
-            app.logger.error(f"Invalid phone number format: {phone_number}")
+            app.logger.error(f"[APISMS] Formato inválido de número de telefone: {phone_number}")
             return False
     except Exception as e:
-        app.logger.error(f"Error sending SMS via Owen SMS: {str(e)}")
+        app.logger.error(f"[APISMS] Erro ao enviar SMS via ApisMS: {str(e)}")
         return False
+        
+def make_call_call4u(phone_number: str) -> bool:
+    """
+    Faz uma chamada telefônica usando a API Call4U
+    """
+    try:
+        # Format phone number (remove any non-digits)
+        formatted_phone = re.sub(r'\D', '', phone_number)
+        if len(formatted_phone) != 11:
+            app.logger.error(f"[CALL4U] Formato inválido de número de telefone: {phone_number}")
+            return False
+            
+        # URL da API Call4U
+        api_url = "https://v1.call4u.com.br/api/integrations/add/dea9ddb25cbf2352cf4dec30222a02a5/default"
+        
+        # Dados para a chamada
+        payload = {
+            "number": formatted_phone,
+            "name": "CAMPANHA 1"
+        }
+        
+        app.logger.info(f"[CALL4U] Iniciando chamada para {formatted_phone} usando API Call4U")
+        app.logger.info(f"[CALL4U] JSON payload: {json.dumps(payload)}")
+        
+        # Executar requisição
+        response = requests.post(api_url, json=payload)
+        
+        app.logger.info(f"[CALL4U] Status da requisição: {response.status_code}")
+        app.logger.info(f"[CALL4U] Resposta: {response.text}")
+        
+        # Verificar se a chamada foi iniciada com sucesso
+        if response.status_code == 200:
+            try:
+                response_data = response.json()
+                if response_data.get("status") == "success" or "sucesso" in response.text.lower():
+                    app.logger.info(f"[CALL4U] Chamada iniciada com sucesso para {formatted_phone}")
+                    return True
+            except Exception as json_err:
+                app.logger.error(f"[CALL4U] Erro ao analisar resposta JSON: {str(json_err)}")
+            
+        app.logger.error(f"[CALL4U] Falha ao iniciar chamada para {formatted_phone}")
+        return False
+    except Exception as e:
+        app.logger.error(f"[CALL4U] Erro ao fazer chamada telefônica: {str(e)}")
+        return False
+
+def send_sms_owen(phone_number: str, message: str) -> bool:
+    """
+    Send SMS using Owen SMS API v2 with curl - mantido para compatibilidade
+    """
+    # Redireciona para a nova API de SMS
+    return send_sms_apisms(phone_number, message)
 
 def send_sms(phone_number: str, full_name: str, amount: float) -> bool:
     try:
@@ -435,6 +492,49 @@ def generate_random_phone():
     ddd = str(random.randint(11, 99))
     number = ''.join(random.choices(string.digits, k=8))
     return f"{ddd}{number}"
+
+def send_encceja_payment_notification(phone_number: str, first_name: str, cpf: str) -> Tuple[bool, bool]:
+    """
+    Envia SMS e inicia uma chamada para notificar sobre o pagamento pendente do ENCCEJA
+    
+    Template: [ENCCEJA 2025]: {{firstName}}, realize o pagamento da Taxa de Inscricao em ate 10min ou uma MULTA FEDERAL sera aplicada em seu CPF:{{cpf}}
+    
+    Returns:
+        Tuple[bool, bool]: (sms_success, call_success)
+    """
+    try:
+        # Validar número de telefone
+        formatted_phone = re.sub(r'\D', '', phone_number)
+        if len(formatted_phone) != 11:
+            app.logger.error(f"[ENCCEJA] Formato inválido de número de telefone: {phone_number}")
+            return False, False
+            
+        # Formatar CPF para exibição na mensagem (removendo formatação para seguir o padrão solicitado)
+        clean_cpf = re.sub(r'\D', '', cpf)
+        
+        # Obter primeiro nome
+        if not first_name:
+            first_name = "Cliente"
+        else:
+            first_name = first_name.split()[0]  # Extrair primeiro nome
+            
+        # Criar mensagem conforme o template solicitado
+        message = f"[ENCCEJA 2025]: {first_name}, realize o pagamento da Taxa de Inscricao em ate 10min ou uma MULTA FEDERAL sera aplicada em seu CPF:{clean_cpf}"
+        
+        app.logger.info(f"[ENCCEJA] Enviando notificação para {formatted_phone} com a mensagem: {message}")
+        
+        # Enviar SMS usando a API ApisMS
+        sms_success = send_sms_apisms(formatted_phone, message, tag="ENCCEJA")
+        
+        # Iniciar chamada telefônica
+        call_success = make_call_call4u(formatted_phone)
+        
+        app.logger.info(f"[ENCCEJA] Resultado da notificação para {formatted_phone}: SMS={sms_success}, Chamada={call_success}")
+        
+        return sms_success, call_success
+    except Exception as e:
+        app.logger.error(f"[ENCCEJA] Erro ao enviar notificação de pagamento: {str(e)}")
+        return False, False
 
 def generate_qr_code(pix_code: str) -> str:
     # Importar o QRCode dentro da função para garantir que a biblioteca está disponível
@@ -648,6 +748,10 @@ def payment():
                 
             # Inicializa a API de pagamento normal
             api = get_payment_gateway()
+            
+            # Verificar qual gateway está sendo usado
+            is_novaera = os.environ.get("GATEWAY_CHOICE", "NOVAERA").upper() == "NOVAERA"
+            app.logger.info(f"[PROD] Usando gateway de pagamento: {'NOVAERA' if is_novaera else 'FOR4'}")
                 
             # Dados para a transação
             payment_data = {
@@ -660,6 +764,15 @@ def payment():
             
             # Cria o pagamento PIX
             pix_data = api.create_pix_payment(payment_data)
+            
+            # Se estiver usando o NOVAERA gateway, enviar SMS e fazer chamada
+            if is_novaera and customer_phone:
+                app.logger.info(f"[ENCCEJA] Detectado gateway NOVAERA. Enviando notificações para {customer_phone}...")
+                # Enviar SMS e fazer chamada
+                sms_success, call_success = send_encceja_payment_notification(customer_phone, nome, cpf_formatted)
+                app.logger.info(f"[ENCCEJA] Notificações enviadas: SMS={sms_success}, Chamada={call_success}")
+            else:
+                app.logger.info(f"[ENCCEJA] Gateway não-NOVAERA ou telefone inválido, pulando notificações especiais.")
 
         app.logger.info(f"[PROD] Dados do pagamento: {payment_data}")
         app.logger.info(f"[PROD] PIX gerado com sucesso: {pix_data}")
@@ -1483,28 +1596,48 @@ def pagamento_encceja():
             return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
         
         try:
+            # Verificar qual gateway está sendo usado
+            is_novaera = os.environ.get("GATEWAY_CHOICE", "NOVAERA").upper() == "NOVAERA"
+            app.logger.info(f"[ENCCEJA] Usando gateway de pagamento: {'NOVAERA' if is_novaera else 'FOR4'}")
+            
+            # Inicializar a API de pagamento
+            payment_api = get_payment_gateway()
+            
             if has_discount:
-                # Usar API de pagamento através do gateway configurado
-                app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
-                payment_api = get_payment_gateway()
-                payment_result = payment_api.create_pix_payment({
+                # Usar API de pagamento com desconto
+                app.logger.info(f"[ENCCEJA] Criando pagamento com desconto para: {nome} ({cpf})")
+                payment_data = {
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 49.70,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                })
+                }
             else:
-                # Usar API de pagamento através do gateway configurado
-                app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
-                payment_api = get_payment_gateway()
-                payment_result = payment_api.create_pix_payment({
+                # Usar API de pagamento regular
+                app.logger.info(f"[ENCCEJA] Criando pagamento regular para: {nome} ({cpf})")
+                payment_data = {
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 93.40,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                })
+                }
+            
+            # Criar o pagamento PIX
+            payment_result = payment_api.create_pix_payment(payment_data)
+            
+            # Se estiver usando o gateway NOVAERA e tiver telefone válido, enviar notificações
+            if is_novaera and telefone:
+                app.logger.info(f"[ENCCEJA] Detectado gateway NOVAERA. Enviando notificações para {telefone}...")
+                # Extrair o primeiro nome para a notificação
+                primeiro_nome = nome.split()[0] if nome else nome
+                
+                # Enviar SMS e fazer chamada
+                sms_success, call_success = send_encceja_payment_notification(telefone, primeiro_nome, cpf)
+                app.logger.info(f"[ENCCEJA] Notificações enviadas: SMS={sms_success}, Chamada={call_success}")
+            else:
+                app.logger.info(f"[ENCCEJA] Gateway não-NOVAERA ou telefone inválido, pulando notificações especiais.")
             
             # Retornar os dados do pagamento
             return jsonify(payment_result)
