@@ -1436,41 +1436,6 @@ def verificar_pagamento():
     try:
         data = request.get_json()
         transaction_id = data.get('transactionId')
-        nome = data.get('nome', '')
-        telefone = data.get('telefone', '')
-        cpf = data.get('cpf', '')
-        
-        # MOCK: Se estiver usando o ID de mock, retornar uma resposta simulada para testes
-        if transaction_id and transaction_id.startswith('mock-'):
-            app.logger.info(f"[MOCK] Detectado ID de transação de teste: {transaction_id}")
-            # Chamar nosso endpoint de mock para obter o status simulado
-            try:
-                # Usar a mesma informação de usuário para o mock
-                mock_data = {
-                    'transactionId': transaction_id,
-                    'nome': nome,
-                    'telefone': telefone,
-                    'cpf': cpf
-                }
-                
-                # Fazer requisição para nosso próprio endpoint de mock
-                mock_url = f"{request.url_root.rstrip('/')}/api/mock-payment-status"
-                app.logger.info(f"[MOCK] Fazendo requisição para: {mock_url}")
-                
-                response = requests.post(
-                    mock_url,
-                    json=mock_data,
-                    headers={'Content-Type': 'application/json'}
-                )
-                
-                if response.status_code == 200:
-                    mock_response = response.json()
-                    app.logger.info(f"[MOCK] Resposta de status simulado: {mock_response}")
-                    return jsonify(mock_response)
-                else:
-                    app.logger.error(f"[MOCK] Erro ao obter status simulado: {response.status_code}")
-            except Exception as mock_error:
-                app.logger.error(f"[MOCK] Erro ao processar mock: {str(mock_error)}")
         
         if not transaction_id:
             app.logger.error("[PROD] ID da transação não fornecido")
