@@ -1976,6 +1976,57 @@ def consultar_cpf():
         app.logger.error(f"Erro ao buscar CPF: {str(e)}")
         return jsonify({"error": f"Erro ao buscar CPF: {str(e)}"}), 500
 
+@app.route('/api/teste-for4payments', methods=['GET'])
+def teste_for4payments():
+    """Endpoint de teste para verificar conexão com For4Payments"""
+    try:
+        # Obter a chave de API da For4Payments
+        for4_key = os.environ.get("FOR4PAYMENTS_SECRET_KEY")
+        if not for4_key:
+            return jsonify({"success": False, "error": "Chave de API da For4Payments não configurada"}), 500
+        
+        # Testar a conexão
+        headers = {
+            'Authorization': for4_key,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Origin': 'https://encceja.for4hub.com.br',
+            'Referer': 'https://encceja.for4hub.com.br/'
+        }
+        
+        # Simular uma solicitação para obter uma lista de transações (endpoint existente)
+        url = "https://app.for4payments.com.br/api/v1/transaction.getPayment"
+        params = {'id': 'test-123'}  # ID fictício apenas para testar a conexão
+        
+        app.logger.info(f"Testando conexão com For4Payments API")
+        app.logger.info(f"Headers: {headers}")
+        app.logger.info(f"URL: {url}")
+        
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        
+        app.logger.info(f"Resposta do teste For4Payments: Status {response.status_code}")
+        app.logger.info(f"Resposta completa: {response.text}")
+        
+        # Mesmo que seja 404 (não encontrado), o importante é que não seja 403 (Forbidden)
+        if response.status_code != 403:
+            return jsonify({
+                "success": True,
+                "status_code": response.status_code,
+                "message": "Conexão com For4Payments estabelecida com sucesso",
+                "response": response.json() if response.status_code == 200 else {"text": response.text}
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "status_code": response.status_code,
+                "message": "Acesso Forbidden (403) - Problema com autorização",
+                "response": response.json() if response.text else {"text": response.text}
+            }), 403
+    except Exception as e:
+        app.logger.error(f"Erro no teste For4Payments: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 @app.route('/api/mock-payment-status', methods=['POST'])
 def mock_payment_status():
     """Endpoint de teste para simular uma resposta de pagamento aprovado NOVAERA"""
