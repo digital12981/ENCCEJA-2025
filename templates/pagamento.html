@@ -826,11 +826,31 @@
                         };
                         
                         try {
+                            // Garantir que o eventData esteja formatado corretamente
+                            console.log('Enviando dados de conversão:', JSON.stringify(eventData));
+
                             // Enviar para o pixel principal
                             fbq('track', 'Purchase', eventData);
                             console.log('Evento enviado para pixel principal 1418766538994503');
                             
-                            // Enviar para os pixels específicos
+                            // ATENÇÃO ESPECIAL: Enviar evento de compra para o pixel problemático primeiro
+                            // Assegurar que o pixel 1226790281278977 receba o evento corretamente
+                            try {
+                                console.log('IMPORTANTE: Iniciando envio específico para pixel 1226790281278977');
+                                fbq('trackSingle', '1226790281278977', 'Purchase', {
+                                    value: eventData.value,
+                                    currency: 'BRL',
+                                    content_type: 'product',
+                                    content_name: 'Taxa de Inscrição ENCCEJA 2025',
+                                    content_ids: eventData.content_ids,
+                                    content_category: 'Inscrições',
+                                    external_id: eventData.external_id
+                                });
+                                console.log('SUCESSO: Evento enviado para pixel 1226790281278977');
+                            } catch(pixelError) {
+                                console.error('ERRO no pixel 1226790281278977:', pixelError);
+                            }
+                            
                             // Pixel que está funcionando corretamente como referência
                             fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 1345433039826605');
@@ -841,9 +861,6 @@
                             
                             fbq('trackSingle', '190097557439571', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 190097557439571');
-                            
-                            fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1226790281278977');
                             
                             // Novos pixels adicionados
                             fbq('trackSingle', '406381454422752', 'Purchase', eventData);

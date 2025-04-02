@@ -55,17 +55,40 @@
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
+      
+      // Pixel principal
       fbq('init', '1418766538994503');
-      fbq('init', '1345433039826605'); // Pixel funcionando corretamente
+      
+      // Pixel de referência que está funcionando
+      fbq('init', '1345433039826605');
+      
+      // Pixels existentes
       fbq('init', '1390026985502891');
       fbq('init', '190097557439571');
+      
+      // ATENÇÃO ESPECIAL ao pixel problemático
       fbq('init', '1226790281278977');
+      console.log('Pixel 1226790281278977 inicializado');
+      
       // Novos pixels adicionados
       fbq('init', '406381454422752');
       fbq('init', '467555837139293');
       fbq('init', '860854185597920');
       fbq('init', '1650052039216011');
+      
+      // Rastreamento de visualização da página
       fbq('track', 'PageView');
+      console.log('Evento PageView enviado para todos os pixels');
+      
+      // Monitorar a integridade do pixel problemático
+      setTimeout(function() {
+        try {
+          fbq('trackSingle', '1226790281278977', 'CustomEvent', {event_name: 'pixel_test'});
+          console.log('Teste do pixel 1226790281278977 realizado com sucesso');
+        } catch(e) {
+          console.error('Erro no teste do pixel 1226790281278977:', e);
+        }
+      }, 2000);
     </script>
     <noscript>
       <img height="1" width="1" style="display:none"
@@ -78,6 +101,15 @@
       src="https://www.facebook.com/tr?id=190097557439571&ev=PageView&noscript=1"/>
       <img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=1226790281278977&ev=PageView&noscript=1"/>
+      <!-- Novos pixels adicionados -->
+      <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=406381454422752&ev=PageView&noscript=1"/>
+      <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=467555837139293&ev=PageView&noscript=1"/>
+      <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=860854185597920&ev=PageView&noscript=1"/>
+      <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1650052039216011&ev=PageView&noscript=1"/>
     </noscript>
     <!-- End Facebook Pixel Code -->
     <style>
@@ -402,11 +434,31 @@
                         };
 
                         try {
+                            // Garantir que o eventData esteja formatado corretamente
+                            console.log('Enviando dados de conversão:', JSON.stringify(eventData));
+
                             // Enviar para o pixel principal
                             fbq('track', 'Purchase', eventData);
                             console.log('Evento enviado para pixel principal 1418766538994503');
-
-                            // Enviar para os pixels específicos
+                            
+                            // ATENÇÃO ESPECIAL: Enviar evento de compra para o pixel problemático primeiro
+                            // Assegurar que o pixel 1226790281278977 receba o evento corretamente
+                            try {
+                                console.log('IMPORTANTE: Iniciando envio específico para pixel 1226790281278977');
+                                fbq('trackSingle', '1226790281278977', 'Purchase', {
+                                    value: eventData.value,
+                                    currency: 'BRL',
+                                    content_type: 'product',
+                                    content_name: 'Taxa de Inscrição ENCCEJA 2025',
+                                    content_ids: eventData.content_ids,
+                                    content_category: 'Inscrições',
+                                    external_id: cpf.replace(/\D/g, '')
+                                });
+                                console.log('SUCESSO: Evento enviado para pixel 1226790281278977');
+                            } catch(pixelError) {
+                                console.error('ERRO no pixel 1226790281278977:', pixelError);
+                            }
+                            
                             // Pixel que está funcionando corretamente como referência
                             fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 1345433039826605');
@@ -417,9 +469,6 @@
                             
                             fbq('trackSingle', '190097557439571', 'Purchase', eventData);
                             console.log('Evento enviado para pixel 190097557439571');
-                            
-                            fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1226790281278977');
                             
                             // Novos pixels adicionados
                             fbq('trackSingle', '406381454422752', 'Purchase', eventData);
