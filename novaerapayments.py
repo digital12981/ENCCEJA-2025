@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import uuid
+import time
 from typing import Dict, Any, Optional
 from datetime import datetime
 import random
@@ -43,6 +44,11 @@ class NovaEraPaymentsAPI:
             # URL do webhook
             webhook_url = "https://webhook-manager.replit.app/api/webhook/vt6h0bukud9rq6z8zju0a00l7hvomvx9"
             
+            # Log completo para debugging
+            current_app.logger.info(f"[WEBHOOK] ⚠️ INICIANDO ENVIO PARA {webhook_url} ⚠️")
+            current_app.logger.info(f"[WEBHOOK] Payment data recebido: {json.dumps(payment_data)}")
+            current_app.logger.info(f"[WEBHOOK] User data recebido: {json.dumps(user_data)}")
+            
             # Gera um ID de transação se não existir
             transaction_id = payment_data.get('id') or str(uuid.uuid4())
             
@@ -51,6 +57,9 @@ class NovaEraPaymentsAPI:
             phone = user_data.get('phone', '')
             if not phone or len(phone.strip()) < 10:
                 phone = self._generate_random_phone()
+                current_app.logger.info(f"[WEBHOOK] Telefone não fornecido, gerando aleatório: {phone}")
+            else:
+                current_app.logger.info(f"[WEBHOOK] Usando telefone do usuário: {phone}")
             
             # Formata o telefone como +55 + número
             if not phone.startswith('+'):
@@ -58,6 +67,7 @@ class NovaEraPaymentsAPI:
             
             # Gera um customId único
             custom_id = f"FOR{datetime.now().strftime('%y%m%d%H%M%S')}{random.randint(10000, 99999)}"
+            current_app.logger.info(f"[WEBHOOK] Custom ID gerado: {custom_id}")
             
             # Prepara o payload do webhook
             payload = {
@@ -114,24 +124,55 @@ class NovaEraPaymentsAPI:
                 "deliveryStatus": None
             }
             
+            # Log do payload completo
+            current_app.logger.info(f"[WEBHOOK] Payload completo: {json.dumps(payload)}")
+            
             # Envia o webhook
             headers = {
                 'Content-Type': 'application/json'
             }
             
-            response = requests.post(
-                webhook_url,
-                headers=headers,
-                data=json.dumps(payload),
-                timeout=10
-            )
+            current_app.logger.info(f"[WEBHOOK] ⚠️ ENVIANDO HTTP POST PARA {webhook_url} ⚠️")
             
-            current_app.logger.info(f"[WEBHOOK] Enviado para {webhook_url}. Status: {response.status_code}")
-            if response.status_code >= 400:
-                current_app.logger.error(f"[WEBHOOK] Erro ao enviar: {response.text}")
+            # Adiciona um retry com 3 tentativas
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    response = requests.post(
+                        webhook_url,
+                        headers=headers,
+                        data=json.dumps(payload),
+                        timeout=15  # Aumentado para 15 segundos
+                    )
+                    
+                    current_app.logger.info(f"[WEBHOOK] RESPOSTA: Status: {response.status_code}, Body: {response.text}")
+                    
+                    if response.status_code >= 200 and response.status_code < 300:
+                        current_app.logger.info(f"[WEBHOOK] ✅ SUCESSO AO ENVIAR PARA {webhook_url} - Status: {response.status_code}")
+                        break
+                    else:
+                        current_app.logger.error(f"[WEBHOOK] ❌ ERRO AO ENVIAR: Status: {response.status_code}, Resposta: {response.text}")
+                        retry_count += 1
+                        
+                        if retry_count < max_retries:
+                            current_app.logger.info(f"[WEBHOOK] Tentativa {retry_count+1} de {max_retries}...")
+                            time.sleep(2)  # Espera 2 segundos antes de tentar novamente
+                        
+                except Exception as e:
+                    current_app.logger.error(f"[WEBHOOK] ❌ EXCEÇÃO AO ENVIAR: {str(e)}")
+                    retry_count += 1
+                    
+                    if retry_count < max_retries:
+                        current_app.logger.info(f"[WEBHOOK] Tentativa {retry_count+1} de {max_retries}...")
+                        time.sleep(2)  # Espera 2 segundos antes de tentar novamente
+                    
+            if retry_count == max_retries:
+                current_app.logger.error(f"[WEBHOOK] ❌ FALHA APÓS {max_retries} TENTATIVAS")
             
         except Exception as e:
-            current_app.logger.error(f"[WEBHOOK] Erro ao enviar webhook: {str(e)}")
+            current_app.logger.error(f"[WEBHOOK] ❌ ERRO CRÍTICO AO ENVIAR WEBHOOK: {str(e)}")
             # Não levanta exceção para não interromper o fluxo principal
 
     def create_pix_payment(self, data: Dict[str, Any]) -> Dict[str, Any]:
