@@ -160,7 +160,8 @@
     
     <!-- Adicionar arquivo de áudio para notificações -->
     <audio id="notification-sound" preload="auto">
-        <source src="https://soundbible.com/mp3/notification-sound-7062.mp3" type="audio/mp3">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3" type="audio/mp3">
+        <source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=message-notification-tone-4-126506.mp3" type="audio/mp3">
     </audio>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -415,6 +416,29 @@
             // Verificar se temos uma cidade válida, caso contrário, usar uma cidade padrão
             const city = (userCity && userCity !== "Carregando...") ? userCity : "Brasília";
             
+            // Função para reproduzir som
+            function playSound() {
+                // Criar um elemento de áudio temporário
+                const tempSound = new Audio('https://cdn.pixabay.com/download/audio/2022/03/10/audio_c8c8a73467.mp3?filename=notification-sound-7062.mp3');
+                
+                // Definir volume mais alto
+                tempSound.volume = 0.7;
+                
+                // Reproduzir uma vez
+                tempSound.play().catch(e => {
+                    console.error("Erro ao tocar som temporário:", e);
+                    
+                    // Tentar com outro método/URL como fallback
+                    try {
+                        const backupSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3');
+                        backupSound.volume = 0.7;
+                        backupSound.play().catch(e2 => console.error("Erro no fallback de som:", e2));
+                    } catch (e2) {
+                        console.error("Erro total ao tocar som:", e2);
+                    }
+                });
+            }
+            
             function showRandomNotification() {
                 // Pegar um nome aleatório
                 const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
@@ -436,9 +460,8 @@
                 // Adicionar ao container
                 container.appendChild(notification);
                 
-                // Tocar som de notificação
-                notificationSound.currentTime = 0;
-                notificationSound.play().catch(e => console.error("Erro ao tocar som:", e));
+                // Tentar tocar o som
+                playSound();
                 
                 // Remover a notificação após 7 segundos (animação dura 6s + 1s para remoção segura)
                 setTimeout(() => {
