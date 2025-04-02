@@ -165,10 +165,7 @@
                     document.getElementById('loading-cep').classList.add('hidden');
                     
                     if (data.erro) {
-                        // CEP não encontrado, mas não exibir alerta
-                        // Apenas focar no campo de logradouro para permitir preenchimento manual
-                        document.getElementById('logradouro').focus();
-                        console.log('CEP não encontrado. Permitindo preenchimento manual.');
+                        alert('CEP não encontrado. Por favor, verifique o número digitado.');
                         return;
                     }
                     
@@ -186,10 +183,8 @@
                 })
                 .catch(error => {
                     document.getElementById('loading-cep').classList.add('hidden');
-                    // Não exibir alerta de erro, apenas logar no console
+                    alert('Erro ao buscar o CEP. Por favor, tente novamente.');
                     console.error('Erro ao buscar CEP:', error);
-                    // Focar no campo de logradouro para preenchimento manual
-                    document.getElementById('logradouro').focus();
                 });
         }
         
