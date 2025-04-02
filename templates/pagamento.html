@@ -135,6 +135,23 @@
             border-left: 4px solid #4ade80;
         }
         
+        /* Animação de piscar o texto */
+        .blinking-text {
+            animation: blink 1s ease-in-out infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+        
+        /* Estilo para o contador de tempo */
+        .countdown {
+            font-weight: bold;
+            color: #E53E3E;
+            font-size: 1.1em;
+        }
+        
         .notification-icon {
             margin-right: 10px;
             background-color: rgba(255, 255, 255, 0.2);
@@ -156,6 +173,8 @@
             from { opacity: 1; }
             to { opacity: 0; transform: translateY(-20px); }
         }
+        
+        /* Estes estilos foram movidos para acima */
     </style>
     
     <!-- Adicionar arquivo de áudio para notificações -->
@@ -413,8 +432,12 @@
             const notificationSound = document.getElementById('notification-sound');
             const userCity = document.getElementById('user-city').textContent;
             
-            // Verificar se temos uma cidade válida, caso contrário, usar uma cidade padrão
-            const city = (userCity && userCity !== "Carregando...") ? userCity : "Brasília";
+            // Obter bairro do endereço
+            const addressData = JSON.parse(localStorage.getItem('enderecoData') || '{}');
+            const bairro = addressData.bairro || "Centro";
+            
+            // Verificar se temos um bairro válido, caso contrário, usar um bairro padrão
+            const neighborhood = bairro || "Centro";
             
             // Função para reproduzir som
             function playSound() {
@@ -453,7 +476,7 @@
                         </svg>
                     </div>
                     <div>
-                        <strong>${randomName}</strong> acabou de pagar a Taxa de Inscrição de <strong>R$93,40</strong> e garantiu sua vaga para a prova em <strong>${city}</strong>.
+                        <strong>${randomName}</strong> acabou de pagar a Taxa de Inscrição de <strong>R$93,40</strong> e garantiu sua vaga para a prova em <strong>${neighborhood}</strong>.
                     </div>
                 `;
                 
@@ -690,7 +713,7 @@
                 <div class="form-header py-3 px-4 text-center bg-red-600">
                     <h2 class="text-lg flex items-center justify-center text-white font-semibold">
                         <div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                        AGUARDANDO PAGAMENTO
+                        <span class="blinking-text">AGUARDANDO PAGAMENTO</span>
                     </h2>
                 </div>
                 <!-- Content -->
@@ -703,7 +726,7 @@
                         </div>
                         <div class="text-right">
                             <p class="font-semibold text-red-600">Taxa de Inscrição: R$ 93,40</p>
-                            <p class="text-xs text-gray-600">Vencimento: <span id="expiration-date">2 de maio de 2025</span></p>
+                            <p class="text-xs text-gray-600">Vencimento: <span id="expiration-date" class="countdown">10:00</span></p>
                         </div>
                     </div>
                     
@@ -727,7 +750,7 @@
                                 <div>
                                     <div class="p-3 bg-amber-50 border-l-4 border-amber-400 mb-3">
                                         <p class="text-amber-800 font-medium text-sm">Situação da inscrição:</p>
-                                        <p class="text-red-600 font-bold">PENDENTE - Aguardando Pagamento</p>
+                                        <p class="text-red-600 font-bold">PENDENTE - <span class="blinking-text">AGUARDANDO PAGAMENTO</span></p>
                                     </div>
                                     <div class="flex items-center mb-3">
                                         <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
