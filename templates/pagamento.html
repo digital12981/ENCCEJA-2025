@@ -115,7 +115,53 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Estilo para as notificações de pagamento */
+        .notification {
+            font-size: 13px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            background-color: #1e3a8a;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 10px 0;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideDown 0.3s forwards, fadeOut 0.5s 5.5s forwards;
+            max-width: 90%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid #4ade80;
+        }
+        
+        .notification-icon {
+            margin-right: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
     </style>
+    
+    <!-- Adicionar arquivo de áudio para notificações -->
+    <audio id="notification-sound" preload="auto">
+        <source src="https://soundbible.com/mp3/notification-sound-7062.mp3" type="audio/mp3">
+    </audio>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log("Inicializando página de pagamento");
@@ -351,6 +397,72 @@
         let paymentConfirmed = false;
         
         // Função para verificar o status do pagamento periodicamente
+        // Lista de nomes aleatórios para as notificações
+        const randomNames = [
+            "Maria Oliveira", "João Silva", "Ana Souza", "Carlos Santos", 
+            "Juliana Lima", "Roberto Almeida", "Fernanda Costa", "Lucas Pereira",
+            "Patricia Rodrigues", "Marcelo Gomes", "Luciana Ferreira", "Paulo Castro",
+            "Cristina Rocha", "Ricardo Barbosa", "Amanda Cardoso", "Bruno Martins",
+            "Camila Ribeiro", "Daniel Alves", "Vanessa Carvalho", "Thiago Nunes"
+        ];
+        
+        // Função para mostrar notificações de pagamento
+        function showNotifications() {
+            const container = document.getElementById('notifications-container');
+            const notificationSound = document.getElementById('notification-sound');
+            const userCity = document.getElementById('user-city').textContent;
+            
+            // Verificar se temos uma cidade válida, caso contrário, usar uma cidade padrão
+            const city = (userCity && userCity !== "Carregando...") ? userCity : "Brasília";
+            
+            function showRandomNotification() {
+                // Pegar um nome aleatório
+                const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
+                
+                // Criar elemento de notificação
+                const notification = document.createElement('div');
+                notification.className = 'notification';
+                notification.innerHTML = `
+                    <div class="notification-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <strong>${randomName}</strong> acabou de pagar a Taxa de Inscrição de <strong>R$93,40</strong> e garantiu sua vaga para a prova em <strong>${city}</strong>.
+                    </div>
+                `;
+                
+                // Adicionar ao container
+                container.appendChild(notification);
+                
+                // Tocar som de notificação
+                notificationSound.currentTime = 0;
+                notificationSound.play().catch(e => console.error("Erro ao tocar som:", e));
+                
+                // Remover a notificação após 7 segundos (animação dura 6s + 1s para remoção segura)
+                setTimeout(() => {
+                    notification.remove();
+                }, 7000);
+            }
+            
+            // Mostrar primeira notificação após 2 segundos
+            setTimeout(() => {
+                showRandomNotification();
+                
+                // Configurar intervalos aleatórios para mostrar notificações
+                setInterval(() => {
+                    // Intervalo aleatório entre 1-4 segundos
+                    const randomInterval = Math.floor(Math.random() * 3000) + 1000;
+                    setTimeout(showRandomNotification, randomInterval);
+                }, 7000); // Intervalo principal entre ciclos de notificações
+                
+            }, 2000);
+        }
+        
+        // Iniciar sistema de notificações após o carregamento da página
+        setTimeout(showNotifications, 3000);
+        
         function startPaymentStatusCheck(transactionId) {
             console.log('Iniciando verificação periódica do status de pagamento para ID:', transactionId);
             
@@ -549,31 +661,26 @@
             <!-- Payment Container -->
             <div class="border border-gray-300 rounded">
                 <!-- Form Header -->
-                <div class="form-header py-3 px-4 text-center bg-[#355792]">
+                <!-- Notificações de pagamentos -->
+                <div id="notifications-container" class="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"></div>
+                
+                <div class="form-header py-3 px-4 text-center bg-red-600">
                     <h2 class="text-lg flex items-center justify-center text-white font-semibold">
                         <div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                        ÁREA DO PARTICIPANTE - ENCCEJA 2025
+                        AGUARDANDO PAGAMENTO
                     </h2>
                 </div>
                 <!-- Content -->
                 <div class="p-6 relative bg-gray-50">
                     <!-- Cabeçalho oficial -->
                     <div class="flex justify-between items-center mb-4 border-b pb-3 border-gray-300">
-                        <div class="flex items-center">
-                            <div class="mr-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid" width="40" height="20" viewBox="0 0 69 20" class="h-10 w-auto">
-                                    <defs><style>.cls-2{fill:#355792}</style></defs>
-                                    <path d="M30 20h17v-5H35v-3h12V7H30v13zM50 0v5h19c0-2.47-2.108-5-5-5M50 20h6v-8h8c2.892 0 5-2.53 5-5H50v13zM22 0H9v5h18c-.386-4.118-4.107-5-5-5zm8 5h17V0H30v5zM0 20h6V7H0v13zm9 0h6V7H9v13zm12 0h6V7h-6v13zM0 5h6V0H0v5z" id="path-1" class="cls-2" fill-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-[#355792] font-bold mb-0 text-sm">Instituto Nacional de Estudos</h3>
-                                <p class="text-xs text-gray-600">Exame Nacional para Certificação de Competências</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
+                        <div class="text-left">
                             <h3 class="text-[#355792] font-bold text-lg">ENCCEJA 2025</h3>
                             <p class="text-xs text-gray-600">Inscrição nº 20250438124</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-red-600">Taxa de Inscrição: R$ 93,40</p>
+                            <p class="text-xs text-gray-600">Vencimento: <span id="expiration-date">2 de maio de 2025</span></p>
                         </div>
                     </div>
                     
