@@ -858,27 +858,59 @@
                             fbq('track', 'Purchase', eventData);
                             console.log('Evento enviado para todos os pixels (tracking geral)');
                             
-                            // Tratar o pixel problemático separadamente primeiro
-                            try {
-                                console.log('IMPORTANTE: Iniciando envio específico para pixel 1226790281278977');
-                                fbq('trackSingle', '1226790281278977', 'Purchase', {
-                                    value: eventData.value,
-                                    currency: 'BRL',
-                                    content_type: 'product',
-                                    content_name: 'Taxa de Inscrição ENCCEJA 2025',
-                                    content_ids: eventData.content_ids,
-                                    content_category: 'Inscrições',
-                                    external_id: eventData.external_id
-                                });
-                                console.log('SUCESSO: Evento enviado para pixel 1226790281278977');
-                            } catch(pixelError) {
-                                console.error('ERRO no pixel 1226790281278977:', pixelError);
-                            }
+                            // Lista dos pixels especialmente problemáticos que precisam de tratamento diferenciado
+                            const problematicPixels = [
+                                '1226790281278977', // Pixel problemático original
+                                '860854185597920',  // Pixel problemático adicional 1
+                                '467555837139293',  // Pixel problemático adicional 2
+                                '406381454422752'   // Pixel problemático adicional 3
+                            ];
+
+                            // Função para enviar evento com parâmetros extendidos e retry
+                            const sendPurchaseEvent = (pixelId, retry = 0) => {
+                                try {
+                                    console.log(`IMPORTANTE: Tentativa ${retry+1} para enviar evento ao pixel ${pixelId}`);
+                                    
+                                    // Usar formato simplificado para pixels problemáticos
+                                    const purchaseData = {
+                                        value: eventData.value,
+                                        currency: 'BRL',
+                                        content_type: 'product',
+                                        content_name: 'Taxa de Inscrição ENCCEJA 2025',
+                                        content_ids: eventData.content_ids,
+                                        content_category: 'Inscrições',
+                                        external_id: eventData.external_id
+                                    };
+                                    
+                                    // Enviar duas vezes com delay
+                                    fbq('trackSingle', pixelId, 'Purchase', purchaseData);
+                                    
+                                    // Tentar também com trackCustom para garantir
+                                    fbq('trackSingleCustom', pixelId, 'Purchase', purchaseData);
+                                    
+                                    // Evento adicional para reforçar
+                                    fbq('trackSingle', pixelId, 'CompleteRegistration', purchaseData);
+                                    
+                                    console.log(`SUCESSO: Evento enviado para pixel ${pixelId}`);
+                                    return true;
+                                } catch(pixelError) {
+                                    console.error(`ERRO no pixel ${pixelId}:`, pixelError);
+                                    if (retry < 2) {
+                                        setTimeout(() => sendPurchaseEvent(pixelId, retry + 1), 500);
+                                    }
+                                    return false;
+                                }
+                            };
                             
-                            // Agora enviar para cada pixel individualmente para garantir o rastreamento
+                            // Processar primeiro os pixels problemáticos com tratamento especial
+                            problematicPixels.forEach(pixelId => {
+                                sendPurchaseEvent(pixelId);
+                            });
+                            
+                            // Agora enviar para cada pixel normal usando o método padrão
                             pixelsList.forEach(pixelId => {
-                                // Pular o pixel problemático pois já tratamos acima
-                                if (pixelId === '1226790281278977') return;
+                                // Pular os pixels problemáticos pois já tratamos acima
+                                if (problematicPixels.includes(pixelId)) return;
                                 
                                 try {
                                     fbq('trackSingle', pixelId, 'Purchase', eventData);

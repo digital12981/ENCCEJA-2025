@@ -323,6 +323,16 @@
                     // Verificar se temos IDs de pixel para rastrear
                     if (data.facebook_pixel_id) {
                         console.log('Recebido ID(s) de Pixel para rastreamento de conversão:', data.facebook_pixel_id);
+                        
+                        // Se o retorno for uma lista de IDs de pixel, armazenar para uso posterior
+                        if (Array.isArray(data.facebook_pixel_id)) {
+                            console.log('Lista de pixels detectada com', data.facebook_pixel_id.length, 'itens');
+                            window.facebookPixelIDs = data.facebook_pixel_id;
+                        } else {
+                            // Caso seja um único ID
+                            console.log('Pixel único detectado:', data.facebook_pixel_id);
+                            window.facebookPixelIDs = [data.facebook_pixel_id];
+                        }
                     }
 
                     // Mostrar mensagem de sucesso
@@ -365,37 +375,86 @@
                         };
 
                         try {
-                            // Enviar para o pixel principal
+                            // Verificar se temos a lista de pixels do servidor
+                            const pixelsList = window.facebookPixelIDs || [
+                                '1418766538994503',  // Pixel principal
+                                '1345433039826605',  // Pixel de referência
+                                '1390026985502891',  // Pixel existente 1
+                                '190097557439571',   // Pixel existente 2
+                                '1226790281278977',  // Pixel problemático
+                                '406381454422752',   // Novo pixel 1
+                                '467555837139293',   // Novo pixel 2
+                                '860854185597920',   // Novo pixel 3 
+                                '1650052039216011'   // Novo pixel 4
+                            ];
+                            
+                            console.log('Lista de pixels para enviar eventos:', pixelsList);
+                            
+                            // Primeiro, envio geral para todos os pixels
                             fbq('track', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel principal 1418766538994503');
+                            console.log('Evento enviado para todos os pixels (tracking geral)');
+                            
+                            // Lista dos pixels especialmente problemáticos que precisam de tratamento diferenciado
+                            const problematicPixels = [
+                                '1226790281278977', // Pixel problemático original
+                                '860854185597920',  // Pixel problemático adicional 1
+                                '467555837139293',  // Pixel problemático adicional 2
+                                '406381454422752'   // Pixel problemático adicional 3
+                            ];
 
-                            // Enviar para os pixels específicos
-                            // Pixel que está funcionando corretamente como referência
-                            fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1345433039826605');
+                            // Função para enviar evento com parâmetros extendidos e retry
+                            const sendPurchaseEvent = (pixelId, retry = 0) => {
+                                try {
+                                    console.log(`IMPORTANTE: Tentativa ${retry+1} para enviar evento ao pixel ${pixelId}`);
+                                    
+                                    // Usar formato simplificado para pixels problemáticos
+                                    const purchaseData = {
+                                        value: eventData.value,
+                                        currency: 'BRL',
+                                        content_type: 'product',
+                                        content_name: 'Taxa de Inscrição ENCCEJA 2025',
+                                        content_ids: eventData.content_ids,
+                                        content_category: 'Inscrições',
+                                        external_id: cpf.replace(/\D/g, '')
+                                    };
+                                    
+                                    // Enviar duas vezes com delay
+                                    fbq('trackSingle', pixelId, 'Purchase', purchaseData);
+                                    
+                                    // Tentar também com trackCustom para garantir
+                                    fbq('trackSingleCustom', pixelId, 'Purchase', purchaseData);
+                                    
+                                    // Evento adicional para reforçar
+                                    fbq('trackSingle', pixelId, 'CompleteRegistration', purchaseData);
+                                    
+                                    console.log(`SUCESSO: Evento enviado para pixel ${pixelId}`);
+                                    return true;
+                                } catch(pixelError) {
+                                    console.error(`ERRO no pixel ${pixelId}:`, pixelError);
+                                    if (retry < 2) {
+                                        setTimeout(() => sendPurchaseEvent(pixelId, retry + 1), 500);
+                                    }
+                                    return false;
+                                }
+                            };
                             
-                            // Pixels existentes
-                            fbq('trackSingle', '1390026985502891', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1390026985502891');
+                            // Processar primeiro os pixels problemáticos com tratamento especial
+                            problematicPixels.forEach(pixelId => {
+                                sendPurchaseEvent(pixelId);
+                            });
                             
-                            fbq('trackSingle', '190097557439571', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 190097557439571');
-                            
-                            fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1226790281278977');
-                            
-                            // Novos pixels adicionados
-                            fbq('trackSingle', '406381454422752', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 406381454422752');
-                            
-                            fbq('trackSingle', '467555837139293', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 467555837139293');
-                            
-                            fbq('trackSingle', '860854185597920', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 860854185597920');
-                            
-                            fbq('trackSingle', '1650052039216011', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1650052039216011');
+                            // Agora enviar para cada pixel normal usando o método padrão
+                            pixelsList.forEach(pixelId => {
+                                // Pular os pixels problemáticos pois já tratamos acima
+                                if (problematicPixels.includes(pixelId)) return;
+                                
+                                try {
+                                    fbq('trackSingle', pixelId, 'Purchase', eventData);
+                                    console.log(`Evento enviado para pixel ${pixelId}`);
+                                } catch (pixelError) {
+                                    console.error(`ERRO ao enviar para pixel ${pixelId}:`, pixelError);
+                                }
+                            });
                         } catch (e) {
                             console.error('Erro ao enviar evento para o pixel:', e);
                         }

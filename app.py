@@ -1109,6 +1109,34 @@ def check_discount_payment_status():
             return jsonify(result), 500
         
         app.logger.info(f"[PROD] Status do pagamento verificado: {result.get('status', 'N/A')}")
+        
+        # Compatibilidade com For4Payments ('APPROVED', 'PAID', 'COMPLETED')
+        if (result.get('status') == 'APPROVED' or 
+            result.get('status') == 'PAID' or 
+            result.get('status') == 'COMPLETED'):
+            app.logger.info(f"[PROD] Pagamento com desconto confirmado, ID da transação: {payment_id}")
+            app.logger.info("[FACEBOOK_PIXEL] Registrando evento de conversão para os seguintes pixels do Facebook:")
+            
+            # Lista completa de todos os pixels do Facebook necessários
+            facebook_pixels = [
+                '1418766538994503',  # Pixel principal
+                '1345433039826605',  # Pixel de referência
+                '1390026985502891',  # Pixel existente 1
+                '190097557439571',   # Pixel existente 2
+                '1226790281278977',  # Pixel problemático original
+                '406381454422752',   # Pixel problemático adicional 1
+                '467555837139293',   # Pixel problemático adicional 2
+                '860854185597920',   # Pixel problemático adicional 3
+                '1650052039216011'   # Pixel adicional 4
+            ]
+            
+            # Registre cada pixel individualmente para facilitar o debug
+            for pixel_id in facebook_pixels:
+                app.logger.info(f"[FACEBOOK_PIXEL] Pixel ID: {pixel_id}")
+            
+            # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
+            result['facebook_pixel_id'] = facebook_pixels
+        
         return jsonify(result)
     
     except Exception as e:
