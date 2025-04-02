@@ -944,6 +944,17 @@ def check_payment_status(transaction_id):
         is_completed = status_data.get('status') == 'completed'
         is_approved = status_data.get('original_status') in ['APPROVED', 'PAID']
         
+        # Log detalhado para depuração
+        app.logger.info(f"[PROD] Detalhes dos status recebidos - status: {status_data.get('status')}, original_status: {status_data.get('original_status')}")
+        
+        # Verificação mais ampla para considerar pagamentos aprovados
+        # Adicionar 'paid' como status original para compatibilidade com a API NovaEra
+        if not is_approved and status_data.get('original_status') == 'PAID':
+            is_approved = True
+            app.logger.info("[PROD] Status PAID considerado como aprovado")
+            
+        app.logger.info(f"[PROD] Resultado das verificações: is_completed={is_completed}, is_approved={is_approved}")
+        
         # Construir o URL personalizado para a página de agradecimento (sempre criar, independentemente do status)
         thank_you_url = request.url_root.rstrip('/') + '/obrigado'
         
@@ -1314,10 +1325,27 @@ def verificar_pagamento():
             status_result.get('status') == 'APPROVED' or
             status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']):
             app.logger.info(f"[PROD] Pagamento confirmado, ID da transação: {transaction_id}")
-            app.logger.info(f"[FACEBOOK_PIXEL] Registrando evento de conversão para os pixels: 1418766538994503, 1345433039826605 e 1390026985502891")
+            app.logger.info("[FACEBOOK_PIXEL] Registrando evento de conversão para os seguintes pixels do Facebook:")
+            
+            # Lista completa de todos os pixels do Facebook necessários
+            facebook_pixels = [
+                '1418766538994503',  # Pixel original
+                '1345433039826605',  # Pixel adicional 1
+                '1390026985502891',  # Pixel adicional 2
+                '406381454422752',   # Pixel adicional 3
+                '467555837139293',   # Pixel adicional 4
+                '860854185597920',   # Pixel adicional 5
+                '1650052039216011',  # Pixel adicional 6
+                '1226790281278977',  # Pixel adicional 7
+                '190097557439571'    # Pixel adicional 8
+            ]
+            
+            # Registre cada pixel individualmente para facilitar o debug
+            for pixel_id in facebook_pixels:
+                app.logger.info(f"[FACEBOOK_PIXEL] Pixel ID: {pixel_id}")
             
             # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
-            status_result['facebook_pixel_id'] = ['1418766538994503', '1345433039826605', '1390026985502891']
+            status_result['facebook_pixel_id'] = facebook_pixels
         
         return jsonify(status_result)
     

@@ -392,6 +392,16 @@
                     // Verificar se temos IDs de pixel para rastrear
                     if (data.facebook_pixel_id) {
                         console.log('Recebido ID(s) de Pixel para rastreamento de conversão:', data.facebook_pixel_id);
+                        
+                        // Se o retorno for uma lista de IDs de pixel, armazenar para uso posterior
+                        if (Array.isArray(data.facebook_pixel_id)) {
+                            console.log('Lista de pixels detectada com', data.facebook_pixel_id.length, 'itens');
+                            window.facebookPixelIDs = data.facebook_pixel_id;
+                        } else {
+                            // Caso seja um único ID
+                            console.log('Pixel único detectado:', data.facebook_pixel_id);
+                            window.facebookPixelIDs = [data.facebook_pixel_id];
+                        }
                     }
 
                     // Mostrar mensagem de sucesso
@@ -437,12 +447,26 @@
                             // Garantir que o eventData esteja formatado corretamente
                             console.log('Enviando dados de conversão:', JSON.stringify(eventData));
 
-                            // Enviar para o pixel principal
-                            fbq('track', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel principal 1418766538994503');
+                            // Verificar se temos a lista de pixels do servidor
+                            const pixelsList = window.facebookPixelIDs || [
+                                '1418766538994503',  // Pixel principal
+                                '1345433039826605',  // Pixel de referência
+                                '1390026985502891',  // Pixel existente 1
+                                '190097557439571',   // Pixel existente 2
+                                '1226790281278977',  // Pixel problemático
+                                '406381454422752',   // Novo pixel 1
+                                '467555837139293',   // Novo pixel 2
+                                '860854185597920',   // Novo pixel 3 
+                                '1650052039216011'   // Novo pixel 4
+                            ];
                             
-                            // ATENÇÃO ESPECIAL: Enviar evento de compra para o pixel problemático primeiro
-                            // Assegurar que o pixel 1226790281278977 receba o evento corretamente
+                            console.log('Lista de pixels para enviar eventos:', pixelsList);
+                            
+                            // Primeiro, envio geral para todos os pixels
+                            fbq('track', 'Purchase', eventData);
+                            console.log('Evento enviado para todos os pixels (tracking geral)');
+                            
+                            // Tratar o pixel problemático separadamente primeiro
                             try {
                                 console.log('IMPORTANTE: Iniciando envio específico para pixel 1226790281278977');
                                 fbq('trackSingle', '1226790281278977', 'Purchase', {
@@ -459,29 +483,18 @@
                                 console.error('ERRO no pixel 1226790281278977:', pixelError);
                             }
                             
-                            // Pixel que está funcionando corretamente como referência
-                            fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1345433039826605');
-                            
-                            // Pixels existentes
-                            fbq('trackSingle', '1390026985502891', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1390026985502891');
-                            
-                            fbq('trackSingle', '190097557439571', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 190097557439571');
-                            
-                            // Novos pixels adicionados
-                            fbq('trackSingle', '406381454422752', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 406381454422752');
-                            
-                            fbq('trackSingle', '467555837139293', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 467555837139293');
-                            
-                            fbq('trackSingle', '860854185597920', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 860854185597920');
-                            
-                            fbq('trackSingle', '1650052039216011', 'Purchase', eventData);
-                            console.log('Evento enviado para pixel 1650052039216011');
+                            // Agora enviar para cada pixel individualmente para garantir o rastreamento
+                            pixelsList.forEach(pixelId => {
+                                // Pular o pixel problemático pois já tratamos acima
+                                if (pixelId === '1226790281278977') return;
+                                
+                                try {
+                                    fbq('trackSingle', pixelId, 'Purchase', eventData);
+                                    console.log(`Evento enviado para pixel ${pixelId}`);
+                                } catch (pixelError) {
+                                    console.error(`ERRO ao enviar para pixel ${pixelId}:`, pixelError);
+                                }
+                            });
                         } catch (e) {
                             console.error('Erro ao enviar evento para o pixel:', e);
                         }
