@@ -156,10 +156,19 @@
         /* Estes estilos foram movidos para acima */
     </style>
     
-    <!-- Adicionar arquivo de áudio para notificações -->
+    <!-- Adicionar arquivos de áudio para notificações -->
     <audio id="notification-sound" preload="auto">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3" type="audio/mp3">
         <source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=message-notification-tone-4-126506.mp3" type="audio/mp3">
+    </audio>
+    <audio id="notification-sound-alt" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3" type="audio/mp3">
+    </audio>
+    <audio id="alert-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3" type="audio/mp3">
+    </audio>
+    <audio id="alert-sound-alt" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-alert-2573.mp3" type="audio/mp3">
     </audio>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -474,45 +483,117 @@
             const neighborhood = bairro || "Centro";
             const city = userCity || "sua cidade";
             
-            // Função para reproduzir som
+            // Inicializar sons e garantir que eles estejam prontos para dispositivos móveis
+            let soundsInitialized = false;
+            
+            // Função para inicializar sons após interação do usuário
+            function initializeSounds() {
+                if (soundsInitialized) return;
+                
+                // Obter todos os elementos de áudio
+                const notificationSound = document.getElementById('notification-sound');
+                const notificationSoundAlt = document.getElementById('notification-sound-alt');
+                const alertSound = document.getElementById('alert-sound');
+                const alertSoundAlt = document.getElementById('alert-sound-alt');
+                
+                // Definir volume para todos
+                notificationSound.volume = 0.7;
+                notificationSoundAlt.volume = 0.7;
+                alertSound.volume = 0.8;
+                alertSoundAlt.volume = 0.8;
+                
+                // Carregar todos os sons (isto ajuda em dispositivos móveis)
+                notificationSound.load();
+                notificationSoundAlt.load();
+                alertSound.load();
+                alertSoundAlt.load();
+                
+                // Tocar e pausar imediatamente para "ativar" no iOS/Safari
+                try {
+                    notificationSound.play().then(() => {
+                        notificationSound.pause();
+                        notificationSound.currentTime = 0;
+                    }).catch(e => console.log('Erro na inicialização de som temporária:', e));
+                } catch (e) {
+                    console.log('Erro ao tentar inicializar sons:', e);
+                }
+                
+                // Marcar como inicializado
+                soundsInitialized = true;
+                console.log("Sons inicializados com sucesso!");
+                
+                // Ocultar o botão de inicialização manual se existir
+                const initButton = document.getElementById('sound-init-container');
+                if (initButton) {
+                    initButton.style.display = 'none';
+                }
+            }
+            
+            // Função para inicialização manual dos sons (via botão)
+            function initializeSoundsManually() {
+                initializeSounds();
+                
+                // Tentar tocar um som curto para confirmar
+                setTimeout(() => {
+                    playSound();
+                    // Mostrar feedback ao usuário
+                    alert("Sons inicializados com sucesso! Agora você ouvirá as notificações de pagamento.");
+                }, 100);
+            }
+            
+            // Adicionar listener para inicializar sons na primeira interação
+            document.addEventListener('click', initializeSounds, { once: true });
+            document.addEventListener('touchstart', initializeSounds, { once: true });
+            
+            // Função para reproduzir som de notificação
             function playSound() {
-                // Criar um elemento de áudio temporário
-                const tempSound = new Audio('https://cdn.pixabay.com/download/audio/2022/03/10/audio_c8c8a73467.mp3?filename=notification-sound-7062.mp3');
+                if (!soundsInitialized) {
+                    initializeSounds();
+                    // Talvez não consiga tocar imediatamente após inicializar
+                    return;
+                }
                 
-                // Definir volume mais alto
-                tempSound.volume = 0.7;
+                const notificationSound = document.getElementById('notification-sound');
                 
-                // Reproduzir uma vez
-                tempSound.play().catch(e => {
-                    console.error("Erro ao tocar som temporário:", e);
+                // Recarregar para garantir que pode ser tocado novamente
+                notificationSound.currentTime = 0;
+                
+                // Tentar tocar o som principal
+                notificationSound.play().catch(e => {
+                    console.error("Erro ao tocar som de notificação:", e);
                     
-                    // Tentar com outro método/URL como fallback
-                    try {
-                        const backupSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3');
-                        backupSound.volume = 0.7;
-                        backupSound.play().catch(e2 => console.error("Erro no fallback de som:", e2));
-                    } catch (e2) {
-                        console.error("Erro total ao tocar som:", e2);
-                    }
+                    // Tentar com som alternativo
+                    const notificationSoundAlt = document.getElementById('notification-sound-alt');
+                    notificationSoundAlt.currentTime = 0;
+                    notificationSoundAlt.play().catch(e2 => {
+                        console.error("Erro no fallback de som de notificação:", e2);
+                    });
                 });
             }
             
             // Função para reproduzir som de alerta (diferente)
             function playAlertSound() {
-                const alertSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
-                alertSound.volume = 0.8;
+                if (!soundsInitialized) {
+                    initializeSounds();
+                    // Talvez não consiga tocar imediatamente após inicializar
+                    return;
+                }
                 
+                const alertSound = document.getElementById('alert-sound');
+                
+                // Recarregar para garantir que pode ser tocado novamente
+                alertSound.currentTime = 0;
+                
+                // Tentar tocar o som de alerta
                 alertSound.play().catch(e => {
                     console.error("Erro ao tocar som de alerta:", e);
                     
-                    // Fallback
-                    try {
-                        const backupSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-alert-2573.mp3');
-                        backupSound.volume = 0.8;
-                        backupSound.play().catch(e2 => console.error("Erro no fallback de som de alerta:", e2));
-                    } catch (e2) {
-                        console.error("Erro total ao tocar som de alerta:", e2);
-                    }
+                    // Tentar com som alternativo
+                    const alertSoundAlt = document.getElementById('alert-sound-alt');
+                    alertSoundAlt.currentTime = 0;
+                    alertSoundAlt.play().catch(e2 => {
+                        console.error("Erro no fallback de som de alerta:", e2);
+                    });
                 });
             }
             
@@ -934,8 +1015,20 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Botão para inicializar sons em dispositivos móveis -->
+                            <div id="sound-init-container" class="mt-4 mb-2 flex justify-center">
+                                <button onclick="initializeSoundsManually()" id="sound-init-button" 
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm shadow-md hover:bg-blue-700 transition duration-200 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.465a5 5 0 001.414 1.414M5 12a7 7 0 0114 0 7 7 0 01-7 7 7 7 0 01-7-7z" />
+                                    </svg>
+                                    Ativar notificações sonoras
+                                </button>
+                            </div>
+                            
                             <!-- Informações do local da prova -->
-                            <div class="mt-4 bg-blue-50 p-3 border-l-4 border-blue-400 rounded-r-md">
+                            <div class="mt-2 bg-blue-50 p-3 border-l-4 border-blue-400 rounded-r-md">
                                 <div class="flex items-start">
                                     <div class="text-blue-500 mt-1 mr-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
