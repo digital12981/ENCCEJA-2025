@@ -756,12 +756,28 @@
         function checkPaymentStatus(transactionId) {
             console.log('Verificando status do pagamento...');
             
+            // Obter dados do usuário para incluir na requisição
+            const paymentData = JSON.parse(localStorage.getItem('paymentData') || '{}');
+            console.log('Dados obtidos do paymentData:', paymentData);
+            
+            const userData = JSON.parse(localStorage.getItem('cpfData') || '{}');
+            
+            // Priorizar dados: URL > paymentData > userData
+            const dadosFinais = {
+                nome: paymentData.nome || userData.nome || '',
+                cpf: paymentData.cpf || userData.cpf || '',
+                telefone: paymentData.telefone || '',
+                transactionId: transactionId
+            };
+            
+            console.log('Dados finais (após priorização URL > paymentData > userData):', dadosFinais);
+            
             fetch('/verificar-pagamento', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ transactionId: transactionId })
+                body: JSON.stringify(dadosFinais)
             })
             .then(response => response.json())
             .then(data => {
