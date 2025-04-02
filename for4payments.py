@@ -108,7 +108,7 @@ class For4PaymentsAPI:
                 "paymentMethod": "PIX",
                 "amount": amount_in_cents,
                 "items": [{
-                    "title": "Inscrição 2025",
+                    "title": "Taxa 2025",
                     "quantity": 1,
                     "unitPrice": amount_in_cents,
                     "tangible": False
@@ -244,7 +244,7 @@ class For4PaymentsAPI:
             raise ValueError("CPF do usuário é obrigatório")
             
         # Valor fixo da taxa do Encceja
-        amount = 93.40
+        amount = 93.39
         current_app.logger.info(f"Valor da taxa: R$ {amount:.2f}")
         
         # Sanitização e preparação dos dados
@@ -282,7 +282,7 @@ class For4PaymentsAPI:
                 'cpf': cpf,
                 'amount': amount,
                 'phone': phone,
-                'description': 'Inscrição 2025'
+                'description': 'Taxa 2025'
             }
             
             current_app.logger.info("Chamando API de pagamento PIX")
