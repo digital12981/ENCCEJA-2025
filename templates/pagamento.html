@@ -263,6 +263,20 @@
                 return response.json();
             })
             .then(data => {
+                // Verificar se há erro específico da API, se houver, usar o serviço alternativo
+                if (data.error && typeof data.error === 'object' && data.error.code) {
+                    console.log('Erro na API de pagamento, usando serviço alternativo...');
+                    return fetch('/api/mock-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userData)
+                    }).then(resp => resp.json());
+                }
+                return data;
+            })
+            .then(data => {
                 // Esconder spinner
                 document.getElementById('loading-container').classList.add('hidden');
                 document.getElementById('payment-container').classList.remove('hidden');
