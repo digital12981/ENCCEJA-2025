@@ -217,6 +217,15 @@ class For4PaymentsAPI:
             elif response.status_code == 404:
                 current_app.logger.warning(f"Payment {payment_id} not found")
                 return {'status': 'pending', 'original_status': 'PENDING'}
+            elif response.status_code == 403:
+                # Detectar erro 403 e retornar uma estrutura específica para indicar erro de Forbidden
+                current_app.logger.error(f"Forbidden error (403) while checking payment status for ID {payment_id}")
+                
+                try:
+                    error_data = response.json()
+                    return {'error': error_data.get('error', {'code': '403', 'message': 'Forbidden'})}
+                except:
+                    return {'error': {'code': '403', 'message': 'Forbidden'}}
             else:
                 error_message = f"Failed to fetch payment status (Status: {response.status_code})"
                 current_app.logger.error(error_message)

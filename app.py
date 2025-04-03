@@ -1606,27 +1606,55 @@ def check_for4payments_status():
         
         # Verificar status do pagamento
         try:
+            # Iniciar com a For4Payments API
             status_result = api.check_payment_status(transaction_id)
             app.logger.info(f"[PROD] Status do pagamento: {status_result}")
             
             # Verificar se a resposta contém um erro 403
             if "error" in status_result:
                 error_data = status_result.get('error', {})
+                is_403_error = False
+                
                 if isinstance(error_data, dict) and error_data.get('code') == '403':
-                    app.logger.warning(f"[PROD] API retornou erro 403 Forbidden em check_for4payments_status, usando mock")
-                    # Simular uma resposta de pagamento pendente
-                    import time
-                    status_result = {
-                        'id': transaction_id,
-                        'status': 'pending',
-                        'original_status': 'PENDING',
-                        'is_mock': True,
-                        'created_at': int(time.time()),
-                        'updated_at': int(time.time())
-                    }
+                    is_403_error = True
+                    app.logger.warning(f"[PROD] API For4Payments retornou erro 403 Forbidden, tentando NovaEra")
                 elif isinstance(error_data, str) and '403' in error_data:
-                    app.logger.warning(f"[PROD] API retornou possível erro 403 em check_for4payments_status: {error_data}")
-                    # Simular uma resposta de pagamento pendente
+                    is_403_error = True
+                    app.logger.warning(f"[PROD] API For4Payments retornou possível erro 403: {error_data}, tentando NovaEra")
+                
+                # Se for erro 403, tentar com a NovaEra
+                if is_403_error:
+                    try:
+                        from novaerapayments import create_payment_api as create_novaera_api
+                        
+                        app.logger.info(f"[PROD] Tentando verificar status usando API NovaEra para ID {transaction_id}")
+                        novaera_api = create_novaera_api()
+                        
+                        # Se ID começa com "mock-", então pegamos apenas a parte numérica
+                        if transaction_id.startswith("mock-"):
+                            # Para a NovaEra, vamos precisar gerar um novo ID compatível
+                            import hashlib
+                            # Gerar um ID baseado no transaction_id original
+                            hash_obj = hashlib.md5(transaction_id.encode())
+                            novaera_id = hash_obj.hexdigest()[:16]
+                            app.logger.info(f"[PROD] Convertendo ID mock {transaction_id} para formato NovaEra: {novaera_id}")
+                        else:
+                            novaera_id = transaction_id
+                            
+                        novaera_result = novaera_api.check_payment_status(novaera_id)
+                        
+                        if "error" not in novaera_result:
+                            app.logger.info(f"[PROD] Sucesso ao verificar status via NovaEra: {novaera_result}")
+                            # Marcar que estamos usando NovaEra API
+                            novaera_result["gateway"] = "NOVAERA"
+                            novaera_result["gateway_fallback"] = True
+                            return novaera_result
+                        else:
+                            app.logger.warning(f"[PROD] Ambas as APIs falharam. NovaEra retornou: {novaera_result}")
+                    except Exception as novaera_error:
+                        app.logger.error(f"[PROD] Erro ao verificar status via NovaEra: {str(novaera_error)}")
+                    
+                    # Se chegarmos aqui, ambas as APIs falharam. Usar status pendente
                     import time
                     status_result = {
                         'id': transaction_id,
@@ -1634,7 +1662,8 @@ def check_for4payments_status():
                         'original_status': 'PENDING',
                         'is_mock': True,
                         'created_at': int(time.time()),
-                        'updated_at': int(time.time())
+                        'updated_at': int(time.time()),
+                        'api_error': 'Ambas as APIs falharam'
                     }
         except Exception as api_error:
             app.logger.error(f"[PROD] Exceção ao verificar status do pagamento: {str(api_error)}")
@@ -1646,7 +1675,8 @@ def check_for4payments_status():
                 'original_status': 'PENDING',
                 'is_mock': True,
                 'created_at': int(time.time()),
-                'updated_at': int(time.time())
+                'updated_at': int(time.time()),
+                'api_error': str(api_error)
             }
         
         # Verificar se o pagamento foi aprovado
