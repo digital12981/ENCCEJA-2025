@@ -56,15 +56,10 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         fbq('init', '1418766538994503');
-        fbq('init', '1345433039826605'); // Pixel funcionando corretamente
+        fbq('init', '1345433039826605');
         fbq('init', '1390026985502891');
-        fbq('init', '190097557439571');
-        fbq('init', '1226790281278977');
-        // Novos pixels adicionados
-        fbq('init', '406381454422752');
-        fbq('init', '467555837139293');
-        fbq('init', '860854185597920');
-        fbq('init', '1650052039216011');
+        fbq('init', '190097557439571');  // Novo pixel adicionado
+        fbq('init', '1226790281278977'); // Novo pixel adicionado
         fbq('track', 'PageView');
         
         // Track purchase conversion
@@ -76,89 +71,11 @@
             content_ids: ['encceja-2025-tarifa-regional']
         };
         
-        // Garantir que o eventData esteja formatado corretamente
-        console.log('Enviando dados de conversão:', JSON.stringify(eventData));
-        
-        // Verificar se temos a lista de pixels do servidor
-        const pixelsList = window.facebookPixelIDs || [
-            '1418766538994503',  // Pixel principal
-            '1345433039826605',  // Pixel de referência
-            '1390026985502891',  // Pixel existente 1
-            '190097557439571',   // Pixel existente 2
-            '1226790281278977',  // Pixel problemático
-            '406381454422752',   // Novo pixel 1
-            '467555837139293',   // Novo pixel 2
-            '860854185597920',   // Novo pixel 3 
-            '1650052039216011'   // Novo pixel 4
-        ];
-        
-        console.log('Lista de pixels para enviar eventos:', pixelsList);
-        
-        // Primeiro, envio geral para todos os pixels
         fbq('track', 'Purchase', eventData);
-        console.log('Evento enviado para todos os pixels (tracking geral)');
-        
-        // Lista dos pixels especialmente problemáticos que precisam de tratamento diferenciado
-        const problematicPixels = [
-            '1226790281278977', // Pixel problemático original
-            '860854185597920',  // Pixel problemático adicional 1
-            '467555837139293',  // Pixel problemático adicional 2
-            '406381454422752'   // Pixel problemático adicional 3
-        ];
-
-        // Função para enviar evento com parâmetros extendidos e retry
-        const sendPurchaseEvent = (pixelId, retry = 0) => {
-            try {
-                console.log(`IMPORTANTE: Tentativa ${retry+1} para enviar evento ao pixel ${pixelId}`);
-                
-                // Usar formato simplificado para pixels problemáticos
-                const purchaseData = {
-                    value: eventData.value,
-                    currency: 'BRL',
-                    content_type: 'product',
-                    content_name: 'Taxa de Inscrição ENCCEJA 2025',
-                    content_ids: eventData.content_ids,
-                    content_category: 'Inscrições',
-                    external_id: '{{ cpf|default("") }}'.replace(/\D/g, '')
-                };
-                
-                // Enviar duas vezes com delay
-                fbq('trackSingle', pixelId, 'Purchase', purchaseData);
-                
-                // Tentar também com trackCustom para garantir
-                fbq('trackSingleCustom', pixelId, 'Purchase', purchaseData);
-                
-                // Evento adicional para reforçar
-                fbq('trackSingle', pixelId, 'CompleteRegistration', purchaseData);
-                
-                console.log(`SUCESSO: Evento enviado para pixel ${pixelId}`);
-                return true;
-            } catch(pixelError) {
-                console.error(`ERRO no pixel ${pixelId}:`, pixelError);
-                if (retry < 2) {
-                    setTimeout(() => sendPurchaseEvent(pixelId, retry + 1), 500);
-                }
-                return false;
-            }
-        };
-        
-        // Processar primeiro os pixels problemáticos com tratamento especial
-        problematicPixels.forEach(pixelId => {
-            sendPurchaseEvent(pixelId);
-        });
-        
-        // Agora enviar para cada pixel normal usando o método padrão
-        pixelsList.forEach(pixelId => {
-            // Pular os pixels problemáticos pois já tratamos acima
-            if (problematicPixels.includes(pixelId)) return;
-            
-            try {
-                fbq('trackSingle', pixelId, 'Purchase', eventData);
-                console.log(`Evento enviado para pixel ${pixelId}`);
-            } catch (pixelError) {
-                console.error(`ERRO ao enviar para pixel ${pixelId}:`, pixelError);
-            }
-        });
+        fbq('trackSingle', '1345433039826605', 'Purchase', eventData);
+        fbq('trackSingle', '1390026985502891', 'Purchase', eventData);
+        fbq('trackSingle', '190097557439571', 'Purchase', eventData);
+        fbq('trackSingle', '1226790281278977', 'Purchase', eventData);
     </script>
     <noscript>
         <img height="1" width="1" style="display:none"
@@ -171,15 +88,6 @@
         src="https://www.facebook.com/tr?id=190097557439571&ev=PageView&noscript=1"/>
         <img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=1226790281278977&ev=PageView&noscript=1"/>
-        <!-- Novos pixels adicionados -->
-        <img height="1" width="1" style="display:none"
-        src="https://www.facebook.com/tr?id=406381454422752&ev=PageView&noscript=1"/>
-        <img height="1" width="1" style="display:none"
-        src="https://www.facebook.com/tr?id=467555837139293&ev=PageView&noscript=1"/>
-        <img height="1" width="1" style="display:none"
-        src="https://www.facebook.com/tr?id=860854185597920&ev=PageView&noscript=1"/>
-        <img height="1" width="1" style="display:none"
-        src="https://www.facebook.com/tr?id=1650052039216011&ev=PageView&noscript=1"/>
     </noscript>
     <!-- End Facebook Pixel Code -->
     
@@ -681,56 +589,12 @@
         let transactionId = null;
         let checkStatusInterval = null;
         
-        // Função para gerar headers aleatórios para evitar 403 da Vercel
-        function generateRandomHeaders() {
-            // Lista de user agents
-            const userAgents = [
-                'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-                'Mozilla/5.0 (iPad; CPU OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.109 Mobile/15E148 Safari/604.1',
-                'Mozilla/5.0 (Android 12; Mobile; rv:68.0) Gecko/68.0 Firefox/94.0',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
-                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36'
-            ];
-            
-            // Lista de linguagens
-            const languages = [
-                'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                'en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7',
-                'es-ES,es;q=0.9,pt;q=0.8,en;q=0.7',
-                'fr-FR,fr;q=0.9,en;q=0.8,pt-BR;q=0.7'
-            ];
-            
-            // Gerando timestamps para cache
-            const cacheBuster = Date.now() + Math.floor(Math.random() * 1000);
-            
-            // Construindo headers aleatórios
-            return {
-                'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
-                'Accept-Language': languages[Math.floor(Math.random() * languages.length)],
-                'Cache-Control': Math.random() > 0.5 ? 'no-cache' : 'max-age=0',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-Cache-Buster': cacheBuster.toString(),
-                'Referer': 'https://encceja2025.com.br/thank_you',
-                'Sec-Fetch-Site': 'same-origin',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Dest': 'empty',
-                'Content-Type': 'application/json',
-            };
-        }
-        
         function checkPaymentStatus() {
             if (!transactionId) return;
             
             console.log("Verificando status do pagamento:", transactionId);
             
-            // Usar headers aleatórios para evitar bloqueio da API
-            const randomHeaders = generateRandomHeaders();
-            console.log("Usando headers aleatórios:", JSON.stringify(randomHeaders));
-            
-            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`, {
-                headers: randomHeaders
-            })
+            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log("Resposta do status do pagamento:", data);
@@ -839,14 +703,12 @@
             const cleanCpf = userData.cpf.replace(/\D/g, '');
             const email = `${cleanCpf}@participante.encceja.gov.br`;
             
-            // Usar headers aleatórios para evitar bloqueio 403 da Vercel
-            const randomHeaders = generateRandomHeaders();
-            console.log("Usando headers aleatórios para criar pagamento:", JSON.stringify(randomHeaders));
-            
             // Enviar requisição para criar o pagamento
             fetch('/create-pix-payment', {
                 method: 'POST',
-                headers: randomHeaders,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     name: cleanName,
                     cpf: cleanCpf,

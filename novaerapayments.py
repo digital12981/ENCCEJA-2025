@@ -145,33 +145,11 @@ class NovaEraPaymentsAPI:
                 payment_data = response.json()
                 current_app.logger.info(f"[DEBUG] Resposta completa da API NovaEra: {payment_data}")
                 
-                # Mapear status da NovaEra para o formato padronizado da aplicação
-                original_status = payment_data['data']['status']
-                
-                # Status mapping
-                status_mapping = {
-                    'pending': 'pending',
-                    'processing': 'pending',
-                    'authorized': 'pending',
-                    'paid': 'completed',    # Este é o status de sucesso na NovaEra
-                    'completed': 'completed',
-                    'canceled': 'cancelled',
-                    'failed': 'failed',
-                    'expired': 'failed'
-                }
-                
-                # Obter o status mapeado ou manter o status original se não for reconhecido
-                mapped_status = status_mapping.get(original_status.lower(), original_status)
-                
-                # Constrói a resposta padronizada
+                # Constrói a resposta padrão
                 result = {
-                    'status': mapped_status,
-                    'original_status': original_status.upper()  # Para compatibilidade com a verificação no app.py
+                    'status': payment_data['data']['status']
                 }
 
-                # Log detalhado para depuração de status
-                current_app.logger.info(f"[NOVAERA] Status mapeado para pagamento {payment_id}: {original_status} -> {mapped_status}")
-                
                 # Adiciona campos adicionais, se disponíveis
                 try:
                     if 'pix' in payment_data['data'] and 'qrcode' in payment_data['data']['pix']:
@@ -180,10 +158,11 @@ class NovaEraPaymentsAPI:
                 except Exception as e:
                     current_app.logger.error(f"[ERROR] Erro ao acessar campos de PIX: {str(e)}")
                 
-                # Para uso com pixel do Facebook, adicionar um identificador
-                if mapped_status == 'completed':
-                    current_app.logger.info(f"[FACEBOOK_PIXEL] Evento de conversão para pagamento {payment_id} - NOVAERA")
-                    result['facebook_pixel_id'] = '1418766538994503'
+                # Se o status for 'paid', retornar essa informação explicitamente para compatibilidade
+                # Para compatibilidade com a estrutura esperada pelo frontend
+                if payment_data['data']['status'] == 'paid':
+                    result['status'] = 'paid'
+                    current_app.logger.info(f"[INFO] Pagamento com ID {payment_id} confirmado como PAGO")
                 
                 return result
             else:

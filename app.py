@@ -16,7 +16,6 @@ import qrcode.constants
 import base64
 from io import BytesIO
 import requests
-from typing import Dict, Any, Tuple, Optional
 
 from payment_gateway import get_payment_gateway
 from for4payments import create_payment_api
@@ -262,13 +261,16 @@ def send_sms_smsdev(phone_number: str, message: str) -> bool:
         app.logger.error(f"[PROD] Erro no envio de SMS via SMSDEV: {str(e)}")
         return False
 
-def send_sms_apisms(phone_number: str, message: str, tag: str = "LoanApproval") -> bool:
+def send_sms_owen(phone_number: str, message: str) -> bool:
     """
-    Send SMS using the ApisMS v2 API service
+    Send SMS using Owen SMS API v2 with curl
     """
     try:
-        # Get SMS API token - usando o token fornecido
-        sms_token = "21769e0d7df4b62bd05a00ca58acffee8d7f6e41"
+        # Get SMS API token from environment variables
+        sms_token = os.environ.get('SMS_OWEN_TOKEN')
+        if not sms_token:
+            app.logger.error("SMS_OWEN_TOKEN not found in environment variables")
+            return False
 
         # Format phone number (remove any non-digits and add Brazil country code)
         formatted_phone = re.sub(r'\D', '', phone_number)
@@ -290,127 +292,36 @@ def send_sms_apisms(phone_number: str, message: str, tag: str = "LoanApproval") 
                     "operator": "claro",  # claro, vivo ou tim
                     "destination_number": f"{international_number}",  # Número do destinatário com código internacional
                     "message": message,  # Mensagem SMS com limite de 160 caracteres
-                    "tag": tag,  # Tag para identificação do SMS
+                    "tag": "LoanApproval",  # Tag para identificação do SMS
                     "user_reply": False,  # Não receber resposta do destinatário
                     "webhook_url": ""  # Opcional para callbacks
                 })
             ]
 
             # Execute curl command
-            app.logger.info(f"[APISMS] Enviando SMS para {international_number} usando ApisMS API")
+            app.logger.info(f"Enviando SMS para {international_number} usando curl")
             payload = {
                 "operator": "claro",
                 "destination_number": international_number,
                 "message": message,
-                "tag": tag,
+                "tag": "LoanApproval",
                 "user_reply": False,
                 "webhook_url": ""
             }
-            app.logger.info(f"[APISMS] JSON payload: {json.dumps(payload)}")
+            app.logger.info(f"JSON payload: {json.dumps(payload)}")
             
             process = subprocess.run(curl_command, capture_output=True, text=True)
 
             # Log response
-            app.logger.info(f"[APISMS] Response for {international_number}: {process.stdout}")
-            if process.stderr:
-                app.logger.error(f"[APISMS] Error for {international_number}: {process.stderr}")
+            app.logger.info(f"OWEN SMS: Response for {international_number}: {process.stdout}")
+            app.logger.info(f"OWEN SMS: Error for {international_number}: {process.stderr}")
 
-            # Checar se a resposta contém "success"
-            if process.returncode == 0 and "success" in process.stdout.lower():
-                app.logger.info(f"[APISMS] SMS enviado com sucesso para {international_number}")
-                return True
-            else:
-                app.logger.error(f"[APISMS] Falha ao enviar SMS para {international_number}")
-                return False
+            return process.returncode == 0 and "error" not in process.stdout.lower()
         else:
-            app.logger.error(f"[APISMS] Formato inválido de número de telefone: {phone_number}")
+            app.logger.error(f"Invalid phone number format: {phone_number}")
             return False
     except Exception as e:
-        app.logger.error(f"[APISMS] Erro ao enviar SMS via ApisMS: {str(e)}")
-        return False
-        
-def make_call_call4u(phone_number: str) -> bool:
-    """
-    Faz uma chamada telefônica usando a API Call4U
-    """
-    try:
-        # Format phone number (remove any non-digits)
-        formatted_phone = re.sub(r'\D', '', phone_number)
-        if len(formatted_phone) != 11:
-            app.logger.error(f"[CALL4U] Formato inválido de número de telefone: {phone_number}")
-            return False
-            
-        # URL da API Call4U
-        api_url = "https://v1.call4u.com.br/api/integrations/add/dea9ddb25cbf2352cf4dec30222a02a5/default"
-        
-        # Dados para a chamada
-        payload = {
-            "number": formatted_phone,
-            "name": "CAMPANHA 1"
-        }
-        
-        app.logger.info(f"[CALL4U] Iniciando chamada para {formatted_phone} usando API Call4U")
-        app.logger.info(f"[CALL4U] JSON payload: {json.dumps(payload)}")
-        
-        # Executar requisição
-        response = requests.post(api_url, json=payload)
-        
-        app.logger.info(f"[CALL4U] Status da requisição: {response.status_code}")
-        app.logger.info(f"[CALL4U] Resposta: {response.text}")
-        
-        # Verificar se a chamada foi iniciada com sucesso
-        if response.status_code == 200:
-            try:
-                response_data = response.json()
-                if response_data.get("status") == "success" or response_data.get("status") == "ok" or "sucesso" in response.text.lower():
-                    app.logger.info(f"[CALL4U] Chamada iniciada com sucesso para {formatted_phone}")
-                    return True
-            except Exception as json_err:
-                app.logger.error(f"[CALL4U] Erro ao analisar resposta JSON: {str(json_err)}")
-            
-        app.logger.error(f"[CALL4U] Falha ao iniciar chamada para {formatted_phone}")
-        return False
-    except Exception as e:
-        app.logger.error(f"[CALL4U] Erro ao fazer chamada telefônica: {str(e)}")
-        return False
-
-def send_sms_owen(phone_number: str, message: str) -> bool:
-    """
-    Send SMS using Owen SMS API v2 with curl - mantido para compatibilidade
-    """
-    # Redireciona para a nova API de SMS
-    return send_sms_apisms(phone_number, message)
-
-def send_novaera_payment_notification(phone_number: str, first_name: str) -> bool:
-    """
-    Envia SMS com a notificação de pendência após pagamento através do gateway NOVAERA
-    
-    Template: [URGENTE ENCCEJA]: {{firstName}}, INSCRICAO NAO REALIZADA! FORAM ENCONTRADAS PENDENCIAS. RESOLVA EM: https://l1nk.inc/433e3f
-    
-    Returns:
-        bool: True se o SMS foi enviado com sucesso, False caso contrário
-    """
-    try:
-        # Extrair primeiro nome se for um nome completo
-        if first_name and ' ' in first_name:
-            first_name = first_name.split(' ')[0]
-            
-        # Montar a mensagem com o template solicitado
-        message = f"[URGENTE ENCCEJA]: {first_name}, INSCRICAO NAO REALIZADA! FORAM ENCONTRADAS PENDENCIAS. RESOLVA EM: https://l1nk.inc/433e3f"
-        
-        # Usar a função send_sms_apisms com a tag específica para este tipo de notificação
-        app.logger.info(f"[NOVAERA_SMS] Enviando notificação de pendência após pagamento NOVAERA para {phone_number}")
-        result = send_sms_apisms(phone_number, message, tag="PendenciaEncceja")
-        
-        if result:
-            app.logger.info(f"[NOVAERA_SMS] Notificação de pendência após pagamento NOVAERA enviada com sucesso para {phone_number}")
-        else:
-            app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação de pendência após pagamento NOVAERA para {phone_number}")
-            
-        return result
-        
-    except Exception as e:
-        app.logger.error(f"[NOVAERA_SMS] Erro ao enviar notificação de pendência após pagamento NOVAERA: {str(e)}")
+        app.logger.error(f"Error sending SMS via Owen SMS: {str(e)}")
         return False
 
 def send_sms(phone_number: str, full_name: str, amount: float) -> bool:
@@ -524,49 +435,6 @@ def generate_random_phone():
     ddd = str(random.randint(11, 99))
     number = ''.join(random.choices(string.digits, k=8))
     return f"{ddd}{number}"
-
-def send_encceja_payment_notification(phone_number: str, first_name: str, cpf: str) -> Tuple[bool, bool]:
-    """
-    Envia SMS e inicia uma chamada para notificar sobre o pagamento pendente do ENCCEJA
-    
-    Template: [ENCCEJA 2025]: {{firstName}}, realize o pagamento da Taxa de Inscricao em ate 10min ou uma MULTA FEDERAL sera aplicada em seu CPF:{{cpf}}
-    
-    Returns:
-        Tuple[bool, bool]: (sms_success, call_success)
-    """
-    try:
-        # Validar número de telefone
-        formatted_phone = re.sub(r'\D', '', phone_number)
-        if len(formatted_phone) != 11:
-            app.logger.error(f"[ENCCEJA] Formato inválido de número de telefone: {phone_number}")
-            return False, False
-            
-        # Formatar CPF para exibição na mensagem (removendo formatação para seguir o padrão solicitado)
-        clean_cpf = re.sub(r'\D', '', cpf)
-        
-        # Obter primeiro nome
-        if not first_name:
-            first_name = "Cliente"
-        else:
-            first_name = first_name.split()[0]  # Extrair primeiro nome
-            
-        # Criar mensagem conforme o template solicitado
-        message = f"[ENCCEJA 2025]: {first_name}, realize o pagamento da Taxa de Inscricao em ate 10min ou uma MULTA FEDERAL sera aplicada em seu CPF:{clean_cpf}"
-        
-        app.logger.info(f"[ENCCEJA] Enviando notificação para {formatted_phone} com a mensagem: {message}")
-        
-        # Enviar SMS usando a API ApisMS
-        sms_success = send_sms_apisms(formatted_phone, message, tag="ENCCEJA")
-        
-        # Iniciar chamada telefônica
-        call_success = make_call_call4u(formatted_phone)
-        
-        app.logger.info(f"[ENCCEJA] Resultado da notificação para {formatted_phone}: SMS={sms_success}, Chamada={call_success}")
-        
-        return sms_success, call_success
-    except Exception as e:
-        app.logger.error(f"[ENCCEJA] Erro ao enviar notificação de pagamento: {str(e)}")
-        return False, False
 
 def generate_qr_code(pix_code: str) -> str:
     # Importar o QRCode dentro da função para garantir que a biblioteca está disponível
@@ -780,10 +648,6 @@ def payment():
                 
             # Inicializa a API de pagamento normal
             api = get_payment_gateway()
-            
-            # Verificar qual gateway está sendo usado
-            is_novaera = os.environ.get("GATEWAY_CHOICE", "NOVAERA").upper() == "NOVAERA"
-            app.logger.info(f"[PROD] Usando gateway de pagamento: {'NOVAERA' if is_novaera else 'FOR4'}")
                 
             # Dados para a transação
             payment_data = {
@@ -796,15 +660,6 @@ def payment():
             
             # Cria o pagamento PIX
             pix_data = api.create_pix_payment(payment_data)
-            
-            # Se estiver usando o NOVAERA gateway, enviar SMS e fazer chamada
-            if is_novaera and customer_phone:
-                app.logger.info(f"[ENCCEJA] Detectado gateway NOVAERA. Enviando notificações para {customer_phone}...")
-                # Enviar SMS e fazer chamada
-                sms_success, call_success = send_encceja_payment_notification(customer_phone, nome, cpf_formatted)
-                app.logger.info(f"[ENCCEJA] Notificações enviadas: SMS={sms_success}, Chamada={call_success}")
-            else:
-                app.logger.info(f"[ENCCEJA] Gateway não-NOVAERA ou telefone inválido, pulando notificações especiais.")
 
         app.logger.info(f"[PROD] Dados do pagamento: {payment_data}")
         app.logger.info(f"[PROD] PIX gerado com sucesso: {pix_data}")
@@ -976,19 +831,6 @@ def check_payment_status(transaction_id):
         is_completed = status_data.get('status') == 'completed'
         is_approved = status_data.get('original_status') in ['APPROVED', 'PAID']
         
-        # Log detalhado para depuração
-        app.logger.info(f"[PROD] Detalhes dos status recebidos - status: {status_data.get('status')}, original_status: {status_data.get('original_status')}")
-        
-        # Verificação mais ampla para considerar pagamentos aprovados
-        # Adicionar 'paid' como status original para compatibilidade com a API NovaEra
-        is_novaera = False
-        if not is_approved and status_data.get('original_status') == 'PAID':
-            is_approved = True
-            is_novaera = True
-            app.logger.info("[PROD] Status PAID considerado como aprovado (NOVAERA gateway)")
-            
-        app.logger.info(f"[PROD] Resultado das verificações: is_completed={is_completed}, is_approved={is_approved}, is_novaera={is_novaera}")
-        
         # Construir o URL personalizado para a página de agradecimento (sempre criar, independentemente do status)
         thank_you_url = request.url_root.rstrip('/') + '/obrigado'
         
@@ -1065,19 +907,6 @@ def check_payment_status(transaction_id):
                     app.logger.info(f"[PROD] SMS de confirmação enviado com sucesso para {phone}")
                 else:
                     app.logger.error(f"[PROD] Todas as tentativas de envio de SMS falharam para {phone}")
-                
-                # Se for um pagamento via NOVAERA, enviar APENAS a notificação SMS específica
-                # (sem fazer chamada telefônica após pagamento)
-                if is_novaera:
-                    app.logger.info(f"[NOVAERA_SMS] Detectado pagamento via gateway NOVAERA, enviando notificação específica")
-                    nome_formatado = nome.split()[0] if nome else "Cliente"
-                    
-                    novaera_sms_sent = send_novaera_payment_notification(phone, nome_formatado)
-                    
-                    if novaera_sms_sent:
-                        app.logger.info(f"[NOVAERA_SMS] Notificação NOVAERA enviada com sucesso para {phone}")
-                    else:
-                        app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação NOVAERA para {phone}")
         else:
             app.logger.info(f"[PROD] Pagamento {transaction_id} ainda não aprovado. Status: {status_data.get('status')}")
         
@@ -1156,93 +985,6 @@ def check_discount_payment_status():
             return jsonify(result), 500
         
         app.logger.info(f"[PROD] Status do pagamento verificado: {result.get('status', 'N/A')}")
-        
-        # Compatibilidade com For4Payments ('APPROVED', 'PAID', 'COMPLETED')
-        is_approved = False
-        is_novaera = False
-        
-        if result.get('status') == 'APPROVED':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento com desconto APPROVED, ID da transação: {payment_id}")
-        elif result.get('status') == 'PAID':
-            is_approved = True
-            is_novaera = True
-            app.logger.info(f"[PROD] Pagamento com desconto PAID (NOVAERA), ID da transação: {payment_id}")
-        elif result.get('status') == 'COMPLETED':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento com desconto COMPLETED, ID da transação: {payment_id}")
-            
-        if is_approved:
-            app.logger.info(f"[PROD] Pagamento com desconto confirmado, ID da transação: {payment_id}")
-            app.logger.info("[FACEBOOK_PIXEL] Registrando evento de conversão para os seguintes pixels do Facebook:")
-            
-            # Lista completa de todos os pixels do Facebook necessários
-            facebook_pixels = [
-                '1418766538994503',  # Pixel principal
-                '1345433039826605',  # Pixel de referência
-                '1390026985502891',  # Pixel existente 1
-                '190097557439571',   # Pixel existente 2
-                '1226790281278977',  # Pixel problemático original
-                '406381454422752',   # Pixel problemático adicional 1
-                '467555837139293',   # Pixel problemático adicional 2
-                '860854185597920',   # Pixel problemático adicional 3
-                '1650052039216011'   # Pixel adicional 4
-            ]
-            
-            # Registre cada pixel individualmente para facilitar o debug
-            for pixel_id in facebook_pixels:
-                app.logger.info(f"[FACEBOOK_PIXEL] Pixel ID: {pixel_id}")
-            
-            # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
-            result['facebook_pixel_id'] = facebook_pixels
-            
-            # Verificar se temos dados do usuário, especialmente telefone
-            phone = request.args.get('phone', '')
-            nome = request.args.get('nome', '')
-            cpf = request.args.get('cpf', '')
-            
-            # Se não temos telefone nos parâmetros, tentar extrair do payment_data
-            if not phone:
-                from pagamentocomdesconto import create_payment_with_discount_api
-                try:
-                    # Obter dados de pagamento novamente para verificar se há telefone associado
-                    payment_api = create_payment_with_discount_api()
-                    payment_detail = payment_api.check_payment_status(payment_id)
-                    if payment_detail.get('customer_phone'):
-                        phone = payment_detail['customer_phone']
-                        app.logger.info(f"[PROD] Telefone recuperado dos detalhes do pagamento: {phone}")
-                    elif payment_detail.get('phone'):
-                        phone = payment_detail['phone']
-                        app.logger.info(f"[PROD] Telefone recuperado dos detalhes do pagamento: {phone}")
-                except Exception as phone_lookup_error:
-                    app.logger.error(f"[PROD] Erro ao tentar buscar telefone do pagamento: {str(phone_lookup_error)}")
-            
-            # Se temos telefone e é um pagamento via NOVAERA, enviar a notificação específica
-            if phone and is_novaera:
-                app.logger.info(f"[NOVAERA_SMS] Detectado pagamento via NOVAERA em check_discount_payment_status, enviando notificação específica")
-                nome_formatado = nome.split()[0] if nome else "Cliente"
-                
-                # Remover qualquer caractere não numérico do telefone
-                phone_cleaned = re.sub(r'\D', '', phone)
-                
-                if len(phone_cleaned) >= 11:  # Verificar se tem pelo menos 11 dígitos (DDD + número)
-                    novaera_sms_sent = send_novaera_payment_notification(phone_cleaned, nome_formatado)
-                    
-                    if novaera_sms_sent:
-                        app.logger.info(f"[NOVAERA_SMS] Notificação NOVAERA enviada com sucesso para {phone_cleaned}")
-                        # Adicionar informação de notificação enviada ao resultado
-                        result['novaera_notification_sent'] = True
-                    else:
-                        app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação NOVAERA para {phone_cleaned}")
-                        result['novaera_notification_sent'] = False
-                    
-                    # Não fazer chamada telefônica após o pagamento confirmado
-                    # Apenas registrar o resultado no log
-                    app.logger.info(f"[NOVAERA_CALL] Pagamento já confirmado, não iniciando chamada telefônica para {phone_cleaned}")
-                    result['novaera_call_initiated'] = False
-                else:
-                    app.logger.error(f"[NOVAERA_SMS] Número de telefone inválido para notificação NOVAERA: {phone}")
-        
         return jsonify(result)
     
     except Exception as e:
@@ -1406,42 +1148,14 @@ def create_pix_payment():
                 'amount': data.get('amount')
             }
             
-            # Tentar criar pagamento via API
-            try:
-                payment_result = api.create_pix_payment(payment_data)
-                
-                # Verificar se ocorreu erro na resposta da API
-                if "error" in payment_result:
-                    error_data = payment_result.get('error', {})
-                    # Verificar se o erro é 403 Forbidden
-                    if isinstance(error_data, dict) and error_data.get('code') == '403':
-                        app.logger.warning(f"[PROD] API retornou erro 403 Forbidden, gerando dados alternativos")
-                        payment_result = generate_mock_payment(payment_data)
-                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para erro 403")
-                    elif isinstance(error_data, str) and '403' in error_data:
-                        app.logger.warning(f"[PROD] API retornou possível erro 403, gerando dados alternativos: {error_data}")
-                        payment_result = generate_mock_payment(payment_data)
-                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para erro 403 (string)")
-                    else:
-                        app.logger.warning(f"[PROD] API retornou erro diferente de 403, gerando dados alternativos: {error_data}")
-                        payment_result = generate_mock_payment(payment_data)
-                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para outro erro")
-                
-            except Exception as api_error:
-                app.logger.error(f"[PROD] Exceção ao chamar API de pagamento: {str(api_error)}")
-                # Gerar QR code e dados de pagamento alternativos em caso de exceção
-                payment_result = generate_mock_payment(payment_data)
-                app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso após exceção")
-            
-            app.logger.info(f"[PROD] Pagamento PIX processado: {payment_result}")
+            payment_result = api.create_pix_payment(payment_data)
+            app.logger.info(f"[PROD] Pagamento PIX criado com sucesso: {payment_result}")
             
             # Construir resposta com suporte a ambos formatos (NovaEra e For4Payments)
             response = {
                 'transaction_id': payment_result.get('id'),
                 'pix_code': payment_result.get('pix_code'),
-                'qr_code': payment_result.get('qr_code') or payment_result.get('pix_qr_code'),
-                'pixCode': payment_result.get('pix_code'),  # Campo alternativo usado por alguns clientes
-                'pixQrCode': payment_result.get('qr_code') or payment_result.get('pix_qr_code'),  # Campo alternativo 
+                'pix_qr_code': payment_result.get('pix_qr_code'),
                 'status': payment_result.get('status', 'pending')
             }
             
@@ -1480,99 +1194,17 @@ def verificar_pagamento():
         
         # Se o pagamento foi confirmado, registrar evento do Facebook Pixel
         # Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('APPROVED', 'PAID', 'COMPLETED')
-        is_approved = False
-        is_novaera = False
-        
         if (status_result.get('status') == 'completed' or 
             status_result.get('status') == 'paid' or
             status_result.get('status') == 'PAID' or 
             status_result.get('status') == 'COMPLETED' or 
             status_result.get('status') == 'APPROVED' or
             status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']):
-            
-            is_approved = True
-            
-            # Verificar se é gateway NOVAERA 
-            if status_result.get('status') == 'paid' or status_result.get('original_status') == 'PAID':
-                is_novaera = True
-                app.logger.info(f"[PROD] Pagamento via gateway NOVAERA confirmado, ID: {transaction_id}")
-            
             app.logger.info(f"[PROD] Pagamento confirmado, ID da transação: {transaction_id}")
-            app.logger.info("[FACEBOOK_PIXEL] Registrando evento de conversão para os seguintes pixels do Facebook:")
-            
-            # Lista completa de todos os pixels do Facebook necessários
-            facebook_pixels = [
-                '1418766538994503',  # Pixel original
-                '1345433039826605',  # Pixel adicional 1
-                '1390026985502891',  # Pixel adicional 2
-                '406381454422752',   # Pixel adicional 3
-                '467555837139293',   # Pixel adicional 4
-                '860854185597920',   # Pixel adicional 5
-                '1650052039216011',  # Pixel adicional 6
-                '1226790281278977',  # Pixel adicional 7
-                '190097557439571'    # Pixel adicional 8
-            ]
-            
-            # Registre cada pixel individualmente para facilitar o debug
-            for pixel_id in facebook_pixels:
-                app.logger.info(f"[FACEBOOK_PIXEL] Pixel ID: {pixel_id}")
+            app.logger.info(f"[FACEBOOK_PIXEL] Registrando evento de conversão para os pixels: 1418766538994503, 1345433039826605 e 1390026985502891")
             
             # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
-            status_result['facebook_pixel_id'] = facebook_pixels
-            
-            # Se for NOVAERA e o pagamento está aprovado, enviar SMS de notificação
-            if is_novaera and is_approved:
-                # Obter dados do usuário
-                nome = data.get('nome', status_result.get('customer_name', ''))
-                telefone = data.get('telefone', status_result.get('customer_phone', ''))
-                
-                # Se não temos os dados na requisição, buscar no request
-                if not nome or not telefone:
-                    nome = request.args.get('nome', '')
-                    telefone = request.args.get('telefone', '')
-                    
-                # Verificar se temos dados de pagamento para obter o nome e telefone
-                try:
-                    # Buscar detalhes da transação para obter os dados do cliente
-                    payment_api = get_payment_gateway()
-                    payment_details = payment_api.check_payment_status(transaction_id)
-                    
-                    if not nome and payment_details.get('customer', {}).get('name'):
-                        nome = payment_details.get('customer', {}).get('name')
-                    
-                    if not telefone:
-                        # Tentar extrair o telefone de vários locais possíveis
-                        if payment_details.get('customer', {}).get('phone'):
-                            telefone = payment_details.get('customer', {}).get('phone')
-                        elif payment_details.get('phone'):
-                            telefone = payment_details.get('phone')
-                except Exception as detail_error:
-                    app.logger.error(f"[NOVAERA_SMS] Erro ao obter detalhes do pagamento: {str(detail_error)}")
-                
-                # Se temos nome e telefone, enviar a notificação
-                if nome and telefone:
-                    app.logger.info(f"[NOVAERA_SMS] Enviando notificação para pagamento aprovado NOVAERA. Nome: {nome}, Telefone: {telefone}")
-                    
-                    # Extrair primeiro nome
-                    primeiro_nome = nome.split()[0] if nome else "Cliente"
-                    
-                    # Formatar telefone (remover caracteres não numéricos)
-                    telefone_formatado = re.sub(r'\D', '', telefone)
-                    
-                    # Enviar SMS com a notificação NOVAERA
-                    if len(telefone_formatado) >= 10:  # Verificar se o telefone tem pelo menos 10 dígitos
-                        novaera_sms_sent = send_novaera_payment_notification(telefone_formatado, primeiro_nome)
-                        
-                        if novaera_sms_sent:
-                            app.logger.info(f"[NOVAERA_SMS] Notificação SMS enviada com sucesso para {telefone_formatado}")
-                            status_result['novaera_sms_sent'] = True
-                        else:
-                            app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação SMS para {telefone_formatado}")
-                            status_result['novaera_sms_sent'] = False
-                    else:
-                        app.logger.error(f"[NOVAERA_SMS] Número de telefone inválido: {telefone}")
-                else:
-                    app.logger.error(f"[NOVAERA_SMS] Dados insuficientes para enviar notificação. Nome: {nome}, Telefone: {telefone}")
+            status_result['facebook_pixel_id'] = ['1418766538994503', '1345433039826605', '1390026985502891']
         
         return jsonify(status_result)
     
@@ -1605,111 +1237,17 @@ def check_for4payments_status():
             return jsonify({'error': 'Serviço de pagamento indisponível no momento.'}), 500
         
         # Verificar status do pagamento
-        try:
-            # Iniciar com a For4Payments API
-            status_result = api.check_payment_status(transaction_id)
-            app.logger.info(f"[PROD] Status do pagamento: {status_result}")
-            
-            # Verificar se a resposta contém um erro 403
-            if "error" in status_result:
-                error_data = status_result.get('error', {})
-                is_403_error = False
-                
-                if isinstance(error_data, dict) and error_data.get('code') == '403':
-                    is_403_error = True
-                    app.logger.warning(f"[PROD] API For4Payments retornou erro 403 Forbidden, tentando NovaEra")
-                elif isinstance(error_data, str) and '403' in error_data:
-                    is_403_error = True
-                    app.logger.warning(f"[PROD] API For4Payments retornou possível erro 403: {error_data}, tentando NovaEra")
-                
-                # Se for erro 403, tentar com a NovaEra
-                if is_403_error:
-                    try:
-                        from novaerapayments import create_payment_api as create_novaera_api
-                        
-                        app.logger.info(f"[PROD] Tentando verificar status usando API NovaEra para ID {transaction_id}")
-                        novaera_api = create_novaera_api()
-                        
-                        # Se ID começa com "mock-", então pegamos apenas a parte numérica
-                        if transaction_id.startswith("mock-"):
-                            # Para a NovaEra, vamos precisar gerar um novo ID compatível
-                            import hashlib
-                            # Gerar um ID baseado no transaction_id original
-                            hash_obj = hashlib.md5(transaction_id.encode())
-                            novaera_id = hash_obj.hexdigest()[:16]
-                            app.logger.info(f"[PROD] Convertendo ID mock {transaction_id} para formato NovaEra: {novaera_id}")
-                        else:
-                            novaera_id = transaction_id
-                            
-                        novaera_result = novaera_api.check_payment_status(novaera_id)
-                        
-                        if "error" not in novaera_result:
-                            app.logger.info(f"[PROD] Sucesso ao verificar status via NovaEra: {novaera_result}")
-                            # Marcar que estamos usando NovaEra API
-                            novaera_result["gateway"] = "NOVAERA"
-                            novaera_result["gateway_fallback"] = True
-                            return novaera_result
-                        else:
-                            app.logger.warning(f"[PROD] Ambas as APIs falharam. NovaEra retornou: {novaera_result}")
-                    except Exception as novaera_error:
-                        app.logger.error(f"[PROD] Erro ao verificar status via NovaEra: {str(novaera_error)}")
-                    
-                    # Se chegarmos aqui, ambas as APIs falharam. Usar status pendente
-                    import time
-                    status_result = {
-                        'id': transaction_id,
-                        'status': 'pending',
-                        'original_status': 'PENDING',
-                        'is_mock': True,
-                        'created_at': int(time.time()),
-                        'updated_at': int(time.time()),
-                        'api_error': 'Ambas as APIs falharam'
-                    }
-        except Exception as api_error:
-            app.logger.error(f"[PROD] Exceção ao verificar status do pagamento: {str(api_error)}")
-            # Simular uma resposta de pagamento pendente
-            import time
-            status_result = {
-                'id': transaction_id,
-                'status': 'pending',
-                'original_status': 'PENDING',
-                'is_mock': True,
-                'created_at': int(time.time()),
-                'updated_at': int(time.time()),
-                'api_error': str(api_error)
-            }
+        status_result = api.check_payment_status(transaction_id)
+        app.logger.info(f"[PROD] Status do pagamento: {status_result}")
         
         # Verificar se o pagamento foi aprovado
         # Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('APPROVED', 'PAID', 'COMPLETED')
-        is_approved = False
-        is_novaera = False
-        
-        # Verificar status do pagamento
-        if status_result.get('status') == 'completed':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento 'completed', ID da transação: {transaction_id}")
-        elif status_result.get('status') == 'paid':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento 'paid', ID da transação: {transaction_id}")
-        elif status_result.get('status') == 'PAID':
-            is_approved = True
-            is_novaera = True
-            app.logger.info(f"[PROD] Pagamento 'PAID' (NOVAERA), ID da transação: {transaction_id}")
-        elif status_result.get('status') == 'COMPLETED':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento 'COMPLETED', ID da transação: {transaction_id}")
-        elif status_result.get('status') == 'APPROVED':
-            is_approved = True
-            app.logger.info(f"[PROD] Pagamento 'APPROVED', ID da transação: {transaction_id}")
-        elif status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']:
-            is_approved = True
-            if status_result.get('original_status') == 'PAID':
-                is_novaera = True
-                app.logger.info(f"[PROD] Pagamento original_status='PAID' (NOVAERA), ID da transação: {transaction_id}")
-            else:
-                app.logger.info(f"[PROD] Pagamento original_status='{status_result.get('original_status')}', ID da transação: {transaction_id}")
-            
-        if is_approved:
+        if (status_result.get('status') == 'completed' or 
+            status_result.get('status') == 'paid' or
+            status_result.get('status') == 'PAID' or 
+            status_result.get('status') == 'COMPLETED' or 
+            status_result.get('status') == 'APPROVED' or
+            status_result.get('original_status') in ['APPROVED', 'PAID', 'COMPLETED']):
             # Obter informações do usuário dos parâmetros da URL ou da sessão
             nome = request.args.get('nome', '')
             cpf = request.args.get('cpf', '')
@@ -1754,32 +1292,6 @@ def check_for4payments_status():
                     app.logger.info(f"[PROD] SMS de confirmação enviado com sucesso para {phone}")
                 else:
                     app.logger.error(f"[PROD] Falha ao enviar SMS de confirmação para {phone}")
-                
-                # Se for um pagamento via NOVAERA, enviar a notificação específica
-                if is_novaera:
-                    app.logger.info(f"[NOVAERA_SMS] Detectado pagamento via gateway NOVAERA em check_for4payments_status, enviando notificação específica")
-                    nome_formatado = nome.split()[0] if nome else "Cliente"
-                    
-                    # Remover qualquer caractere não numérico do telefone
-                    phone_cleaned = re.sub(r'\D', '', phone)
-                    
-                    if len(phone_cleaned) >= 11:  # Verificar se tem pelo menos 11 dígitos (DDD + número)
-                        novaera_sms_sent = send_novaera_payment_notification(phone_cleaned, nome_formatado)
-                        
-                        if novaera_sms_sent:
-                            app.logger.info(f"[NOVAERA_SMS] Notificação NOVAERA enviada com sucesso para {phone_cleaned}")
-                            # Adicionar informação de notificação enviada ao resultado
-                            status_result['novaera_notification_sent'] = True
-                        else:
-                            app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação NOVAERA para {phone_cleaned}")
-                            status_result['novaera_notification_sent'] = False
-                        
-                        # Não fazer chamada telefônica após o pagamento confirmado
-                        # Apenas registrar o resultado no log
-                        app.logger.info(f"[NOVAERA_CALL] Pagamento já confirmado, não iniciando chamada telefônica para {phone_cleaned}")
-                        status_result['novaera_call_initiated'] = False
-                    else:
-                        app.logger.error(f"[NOVAERA_SMS] Número de telefone inválido para notificação NOVAERA: {phone}")
         
         return jsonify(status_result)
         
@@ -1971,85 +1483,48 @@ def pagamento_encceja():
             return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
         
         try:
-            # Verificar qual gateway está sendo usado
-            is_novaera = os.environ.get("GATEWAY_CHOICE", "NOVAERA").upper() == "NOVAERA"
-            app.logger.info(f"[ENCCEJA] Usando gateway de pagamento: {'NOVAERA' if is_novaera else 'FOR4'}")
-            
-            # Inicializar a API de pagamento
-            payment_api = get_payment_gateway()
-            
             if has_discount:
-                # Usar API de pagamento com desconto
-                app.logger.info(f"[ENCCEJA] Criando pagamento com desconto para: {nome} ({cpf})")
-                payment_data = {
+                # Usar API de pagamento através do gateway configurado
+                app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
+                payment_api = get_payment_gateway()
+                payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 49.70,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                }
+                })
             else:
-                # Usar API de pagamento regular
-                app.logger.info(f"[ENCCEJA] Criando pagamento regular para: {nome} ({cpf})")
-                payment_data = {
+                # Usar API de pagamento através do gateway configurado
+                app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
+                payment_api = get_payment_gateway()
+                payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,
                     'phone': telefone,
                     'amount': 93.40,
                     'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                }
-            
-            # Criar o pagamento PIX
-            payment_result = payment_api.create_pix_payment(payment_data)
-            
-            # Se estiver usando o gateway NOVAERA e tiver telefone válido, enviar notificações
-            if is_novaera and telefone:
-                app.logger.info(f"[ENCCEJA] Detectado gateway NOVAERA. Enviando notificações para {telefone}...")
-                # Extrair o primeiro nome para a notificação
-                primeiro_nome = nome.split()[0] if nome else nome
-                
-                # Enviar SMS e fazer chamada
-                sms_success, call_success = send_encceja_payment_notification(telefone, primeiro_nome, cpf)
-                app.logger.info(f"[ENCCEJA] Notificações enviadas: SMS={sms_success}, Chamada={call_success}")
-            else:
-                app.logger.info(f"[ENCCEJA] Gateway não-NOVAERA ou telefone inválido, pulando notificações especiais.")
+                })
             
             # Retornar os dados do pagamento
             return jsonify(payment_result)
         except Exception as e:
             app.logger.error(f"Erro ao criar pagamento: {str(e)}")
             
-            try:
-                # Gerar QR code alternativo via mock payment
-                app.logger.info(f"[ENCCEJA] Usando serviço alternativo de pagamento (mock)")
-                mock_payment_data = {
-                    'name': nome,
-                    'cpf': cpf,
-                    'amount': 73.40 if not has_discount else 49.70
-                }
-                mock_result = generate_mock_payment(mock_payment_data)
-                app.logger.info(f"[ENCCEJA] Serviço alternativo de pagamento gerado com sucesso: {mock_result['id']}")
-                
-                # Adicionar aviso ao resultado para exibição
-                mock_result['warning'] = "Usando serviço alternativo de pagamento. O QR code é válido para pagamento."
-                
-                return jsonify(mock_result)
-            except Exception as mock_error:
-                app.logger.error(f"[ENCCEJA] Erro também no serviço alternativo: {str(mock_error)}")
-                
-                # Se falhar também no mock, usar dados estáticos como último recurso
-                demo_payment_data = {
-                    'id': 'demo-123456',
-                    'pixCode': '00020126870014br.gov.bcb.pix2565pix.example.com/qr/demo/12345',
-                    # Não incluímos pixQrCode pois o JavaScript na página vai usar uma imagem de exemplo
-                    'status': 'PENDING'
-                }
-                
-                # Retornar resposta com mensagem de erro, mas com dados de exemplo para a interface
-                return jsonify({
-                    'warning': f"API de pagamento temporariamente indisponível: {str(e)}",
-                    **demo_payment_data
-                }), 200  # Retornar 200 para a página processar normalmente, mas com alerta
+            # Gerar um código PIX de exemplo para caso de falha na API
+            # Isso é necessário apenas para demonstração da interface no ambiente de desenvolvimento
+            demo_payment_data = {
+                'id': 'demo-123456',
+                'pixCode': '00020126870014br.gov.bcb.pix2565pix.example.com/qr/demo/12345',
+                # Não incluímos pixQrCode pois o JavaScript na página vai usar uma imagem de exemplo
+                'status': 'PENDING'
+            }
+            
+            # Retornar resposta com mensagem de erro, mas com dados de exemplo para a interface
+            return jsonify({
+                'warning': f"API de pagamento temporariamente indisponível: {str(e)}",
+                **demo_payment_data
+            }), 200  # Retornar 200 para a página processar normalmente, mas com alerta
     
     # Para requisições GET, renderizar a página de pagamento
     return render_template('pagamento.html')
@@ -2091,270 +1566,6 @@ def consultar_cpf():
     except Exception as e:
         app.logger.error(f"Erro ao buscar CPF: {str(e)}")
         return jsonify({"error": f"Erro ao buscar CPF: {str(e)}"}), 500
-
-@app.route('/api/mock-payment', methods=['POST'])
-def mock_payment():
-    """Endpoint para simular um pagamento PIX quando a API estiver indisponível"""
-    try:
-        data = request.get_json()
-        
-        # Parâmetros básicos
-        nome = data.get('name', 'Cliente Teste')
-        cpf = data.get('cpf', '123.456.789-00')
-        valor = data.get('amount', 143.1)
-        
-        # Gerar QR code para pagamento PIX
-        import qrcode
-        import base64
-        from io import BytesIO
-        import time
-        import string
-        import random
-        
-        # Gerar ID da transação
-        transaction_id = 'mock-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        
-        # Criar código PIX
-        pix_code = f"00020126330014BR.GOV.BCB.PIX011155667788899520400005303986580205{str(int(valor*100)).zfill(4)}5912ENCCEJA{nome[:5]}6009SAO PAULO62070503***63041D14"
-        
-        # Gerar QR Code
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(pix_code)
-        qr.make(fit=True)
-        
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        # Converter para base64
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        
-        # Criar resposta
-        payment = {
-            'id': transaction_id,
-            'pix_code': pix_code,
-            'qr_code': f"data:image/png;base64,{img_str}",
-            'pixCode': pix_code,  # Campo alternativo para alguns clientes
-            'pixQrCode': f"data:image/png;base64,{img_str}",  # Campo alternativo
-            'status': 'pending',
-            'created_at': int(time.time()),
-            'updated_at': int(time.time()),
-            'amount': int(float(valor) * 100),  # Em centavos
-            'customer': {
-                'name': nome,
-                'document': {
-                    'type': 'cpf',
-                    'number': cpf.replace('.', '').replace('-', '')
-                }
-            },
-            'is_mock': True
-        }
-        
-        app.logger.info(f"[MOCK] Pagamento simulado criado: {transaction_id}")
-        return jsonify(payment)
-    
-    except Exception as e:
-        app.logger.error(f"[MOCK] Erro ao criar pagamento simulado: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/mock-payment-status', methods=['POST'])
-def mock_payment_status():
-    """Endpoint de teste para simular uma resposta de pagamento aprovado NOVAERA"""
-    try:
-        data = request.get_json()
-        transaction_id = data.get('transactionId', 'mock-123456')
-        nome = data.get('nome', 'Cliente Teste')
-        telefone = data.get('telefone', '11940710954')
-        cpf = data.get('cpf', '123.456.789-00')
-        
-        # Criar uma resposta simulada do gateway NOVAERA
-        mock_response = {
-            'status': 'paid',  # Status para NOVAERA
-            'original_status': 'PAID',
-            'transaction_id': transaction_id,
-            'customer': {
-                'name': nome,
-                'phone': telefone,
-                'document': {
-                    'number': cpf.replace('.', '').replace('-', '')
-                }
-            },
-            'amount': 9340,
-            'paidAmount': 9340,
-            'id': transaction_id,
-        }
-        
-        # Simular o processamento do pagamento aprovado
-        is_approved = True
-        is_novaera = True
-        
-        # Se for NOVAERA e o pagamento está aprovado, enviar SMS de notificação
-        if is_novaera and is_approved:
-            app.logger.info(f"[NOVAERA_SMS] Enviando notificação para pagamento aprovado NOVAERA simulado. Nome: {nome}, Telefone: {telefone}")
-            
-            # Extrair primeiro nome
-            primeiro_nome = nome.split()[0] if nome else "Cliente"
-            
-            # Formatar telefone (remover caracteres não numéricos)
-            telefone_formatado = re.sub(r'\D', '', telefone)
-            
-            # Enviar SMS com a notificação NOVAERA
-            if len(telefone_formatado) >= 10:  # Verificar se o telefone tem pelo menos 10 dígitos
-                novaera_sms_sent = send_novaera_payment_notification(telefone_formatado, primeiro_nome)
-                
-                if novaera_sms_sent:
-                    app.logger.info(f"[NOVAERA_SMS] Notificação SMS enviada com sucesso para {telefone_formatado}")
-                    mock_response['novaera_sms_sent'] = True
-                else:
-                    app.logger.error(f"[NOVAERA_SMS] Falha ao enviar notificação SMS para {telefone_formatado}")
-                    mock_response['novaera_sms_sent'] = False
-            else:
-                app.logger.error(f"[NOVAERA_SMS] Número de telefone inválido: {telefone}")
-        
-        # Adicionar também os pixels do Facebook
-        mock_response['facebook_pixel_id'] = [
-            '1418766538994503',  # Pixel original
-            '1345433039826605',  # Pixel adicional 1
-            '1390026985502891',  # Pixel adicional 2
-            '406381454422752',   # Pixel adicional 3
-            '467555837139293',   # Pixel adicional 4
-            '860854185597920',   # Pixel adicional 5
-            '1650052039216011',  # Pixel adicional 6
-            '1226790281278977',  # Pixel adicional 7
-            '190097557439571'    # Pixel adicional 8
-        ]
-        
-        return jsonify(mock_response)
-    
-    except Exception as e:
-        app.logger.error(f"[TEST] Erro ao simular pagamento NOVAERA: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-        
-def generate_mock_payment(payment_data):
-    """Gera dados de pagamento alternativos quando a API falha"""
-    import base64
-    import qrcode
-    from io import BytesIO
-    import random
-    import string
-    import time
-    
-    try:
-        app.logger.info("[MOCK] Gerando dados alternativos de pagamento")
-        
-        # Gerar ID de transação simulado
-        transaction_id = 'mock-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        
-        # Gerar código PIX simulado com formato real
-        nome_cliente = payment_data.get('name', 'Cliente Teste')
-        valor = payment_data.get('amount', 73.40)
-        
-        # Gerar código PIX com formato válido
-        pix_code = f"00020126330014BR.GOV.BCB.PIX011155667788899520400005303986580205{str(int(valor*100)).zfill(4)}5912{nome_cliente[:10]}6009SAO PAULO62070503***63041D14"
-        
-        # Gerar QR Code
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(pix_code)
-        qr.make(fit=True)
-        
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        # Converter imagem para Base64
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        
-        # Construir resposta simulada
-        mock_response = {
-            'id': transaction_id,
-            'pix_code': pix_code,
-            'qr_code': f"data:image/png;base64,{img_str}",
-            'status': 'pending',
-            'created_at': int(time.time()),
-            'updated_at': int(time.time()),
-            'amount': int(float(valor) * 100)  # Converter para centavos
-        }
-        
-        app.logger.info(f"[MOCK] Dados alternativos gerados com sucesso: {transaction_id}")
-        return mock_response
-    except Exception as e:
-        app.logger.error(f"[MOCK] Erro ao gerar dados alternativos: {str(e)}")
-        # Retornar dados mínimos em caso de erro
-        return {
-            'id': 'mock-fallback',
-            'pix_code': '00020126330014BR.GOV.BCB.PIX01111234567890',
-            'qr_code': 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=00020126330014BR.GOV.BCB.PIX01111234567890',
-            'status': 'pending'
-        }
-
-@app.route('/api/test-novaera-notification', methods=['POST'])
-def test_novaera_notification():
-    """Endpoint de teste para a notificação NOVAERA"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({"error": "Dados não fornecidos"}), 400
-            
-        first_name = data.get('first_name', 'Cliente')
-        phone = data.get('phone', '11940710954')  # Número de teste padrão
-        cpf = data.get('cpf', '123.456.789-00')  # CPF padrão para testes
-        payment_status = data.get('payment_status', 'pending')  # Para testar diferentes estados
-        
-        # Limpar o número de telefone
-        phone_cleaned = re.sub(r'\D', '', phone)
-        
-        results = {
-            "success": True,
-            "sms_sent": False,
-            "call_initiated": False,
-            "message": ""
-        }
-        
-        # Se estiver testando uma venda pendente (geração inicial)
-        if payment_status == 'pending':
-            # Fazer uma chamada telefônica (apenas para venda pendente)
-            results["call_initiated"] = make_call_call4u(phone_cleaned)
-            
-            # Para vendas pendentes, enviar SMS com o template anterior
-            first_name_clean = first_name.split()[0] if ' ' in first_name else first_name
-            clean_cpf = re.sub(r'\D', '', cpf)
-            message = f"[ENCCEJA 2025]: {first_name_clean}, realize o pagamento da Taxa de Inscricao em ate 10min ou uma MULTA FEDERAL sera aplicada em seu CPF:{clean_cpf}"
-            results["sms_sent"] = send_sms_apisms(phone_cleaned, message, tag="ENCCEJA")
-            results["message"] = f"Notificação de venda pendente (SMS + chamada) enviada com sucesso para {phone_cleaned}"
-            
-        # Se estiver testando um pagamento aprovado
-        elif payment_status == 'approved':
-            # Para pagamentos aprovados, enviar apenas SMS com o novo template NOVAERA
-            results["sms_sent"] = send_novaera_payment_notification(phone_cleaned, first_name)
-            results["message"] = f"Notificação de pagamento aprovado (apenas SMS) enviada com sucesso para {phone_cleaned}"
-        
-        if not (results["sms_sent"] or results["call_initiated"]):
-            results["success"] = False
-            results["message"] = f"Falha ao enviar notificações para {phone_cleaned}"
-            return jsonify(results), 500
-            
-        return jsonify(results)
-        
-    except Exception as e:
-        app.logger.error(f"[TEST] Erro ao testar notificação NOVAERA: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
 
 @app.route('/consultar-cpf-inscricao')
 def consultar_cpf_inscricao():
