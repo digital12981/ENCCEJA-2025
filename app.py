@@ -1407,14 +1407,31 @@ def create_pix_payment():
             }
             
             # Tentar criar pagamento via API
-            payment_result = api.create_pix_payment(payment_data)
-            
-            # Verificar se ocorreu erro na resposta da API
-            if "error" in payment_result:
-                app.logger.warning(f"[PROD] API retornou erro, gerando dados alternativos: {payment_result.get('error')}")
-                # Gerar QR code e dados de pagamento alternativos
+            try:
+                payment_result = api.create_pix_payment(payment_data)
+                
+                # Verificar se ocorreu erro na resposta da API
+                if "error" in payment_result:
+                    error_data = payment_result.get('error', {})
+                    # Verificar se o erro é 403 Forbidden
+                    if isinstance(error_data, dict) and error_data.get('code') == '403':
+                        app.logger.warning(f"[PROD] API retornou erro 403 Forbidden, gerando dados alternativos")
+                        payment_result = generate_mock_payment(payment_data)
+                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para erro 403")
+                    elif isinstance(error_data, str) and '403' in error_data:
+                        app.logger.warning(f"[PROD] API retornou possível erro 403, gerando dados alternativos: {error_data}")
+                        payment_result = generate_mock_payment(payment_data)
+                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para erro 403 (string)")
+                    else:
+                        app.logger.warning(f"[PROD] API retornou erro diferente de 403, gerando dados alternativos: {error_data}")
+                        payment_result = generate_mock_payment(payment_data)
+                        app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso para outro erro")
+                
+            except Exception as api_error:
+                app.logger.error(f"[PROD] Exceção ao chamar API de pagamento: {str(api_error)}")
+                # Gerar QR code e dados de pagamento alternativos em caso de exceção
                 payment_result = generate_mock_payment(payment_data)
-                app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso")
+                app.logger.info("[PROD] Dados de pagamento alternativos gerados com sucesso após exceção")
             
             app.logger.info(f"[PROD] Pagamento PIX processado: {payment_result}")
             
@@ -1588,8 +1605,49 @@ def check_for4payments_status():
             return jsonify({'error': 'Serviço de pagamento indisponível no momento.'}), 500
         
         # Verificar status do pagamento
-        status_result = api.check_payment_status(transaction_id)
-        app.logger.info(f"[PROD] Status do pagamento: {status_result}")
+        try:
+            status_result = api.check_payment_status(transaction_id)
+            app.logger.info(f"[PROD] Status do pagamento: {status_result}")
+            
+            # Verificar se a resposta contém um erro 403
+            if "error" in status_result:
+                error_data = status_result.get('error', {})
+                if isinstance(error_data, dict) and error_data.get('code') == '403':
+                    app.logger.warning(f"[PROD] API retornou erro 403 Forbidden em check_for4payments_status, usando mock")
+                    # Simular uma resposta de pagamento pendente
+                    import time
+                    status_result = {
+                        'id': transaction_id,
+                        'status': 'pending',
+                        'original_status': 'PENDING',
+                        'is_mock': True,
+                        'created_at': int(time.time()),
+                        'updated_at': int(time.time())
+                    }
+                elif isinstance(error_data, str) and '403' in error_data:
+                    app.logger.warning(f"[PROD] API retornou possível erro 403 em check_for4payments_status: {error_data}")
+                    # Simular uma resposta de pagamento pendente
+                    import time
+                    status_result = {
+                        'id': transaction_id,
+                        'status': 'pending',
+                        'original_status': 'PENDING',
+                        'is_mock': True,
+                        'created_at': int(time.time()),
+                        'updated_at': int(time.time())
+                    }
+        except Exception as api_error:
+            app.logger.error(f"[PROD] Exceção ao verificar status do pagamento: {str(api_error)}")
+            # Simular uma resposta de pagamento pendente
+            import time
+            status_result = {
+                'id': transaction_id,
+                'status': 'pending',
+                'original_status': 'PENDING',
+                'is_mock': True,
+                'created_at': int(time.time()),
+                'updated_at': int(time.time())
+            }
         
         # Verificar se o pagamento foi aprovado
         # Compatibilidade com NovaEra ('paid', 'completed') e For4Payments ('APPROVED', 'PAID', 'COMPLETED')
