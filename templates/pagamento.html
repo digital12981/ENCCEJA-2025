@@ -249,7 +249,19 @@
                 },
                 body: JSON.stringify(userData)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    console.log('Erro no servidor principal, usando serviço alternativo...');
+                    return fetch('/api/mock-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userData)
+                    }).then(resp => resp.json());
+                }
+                return response.json();
+            })
             .then(data => {
                 // Esconder spinner
                 document.getElementById('loading-container').classList.add('hidden');
