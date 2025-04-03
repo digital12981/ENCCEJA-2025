@@ -781,12 +781,11 @@
                 popup.style.justifyContent = 'center';
             
             const loadingPopup = document.getElementById('loadingPopup');
-            const pixPaymentPopup = document.getElementById('pixPaymentPopup');
-            
             loadingPopup.style.display = 'flex';
             loadingPopup.style.alignItems = 'center';
             loadingPopup.style.justifyContent = 'center';
-            pixPaymentPopup.style.display = 'none';
+            
+            document.getElementById('pixPaymentPopup').style.display = 'none';
             
             // Preparar os dados para o pagamento
             const paymentAmount = 143.10; // Valor da Tarifa Regional de Aplicação da Prova (TRAP)
@@ -812,23 +811,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log("Resposta do servidor:", data);
-                
-                // Ocultar loading e mostrar popup de pagamento
-                loadingPopup.style.display = 'none';
-                pixPaymentPopup.style.display = 'block';
-                
-                // Atualizar QR Code
-                const qrCodeImg = document.getElementById('pixQrCode');
-                if (data.pix_qr_code || data.pixQrCode) {
-                    qrCodeImg.src = data.pix_qr_code || data.pixQrCode;
-                }
-                
-                // Atualizar código PIX
-                const pixCodeText = document.getElementById('pixCodeText');
-                if (data.pix_code || data.pixCode) {
-                    pixCodeText.value = data.pix_code || data.pixCode;
-                }sta da API de pagamento:", data);
+                console.log("Resposta da API de pagamento:", data);
                 
                 // Vamos apenas mostrar o popup de pagamento PIX quando tivermos o QR code e o código PIX
                 // Configurar os dados para depois fazer a verificação

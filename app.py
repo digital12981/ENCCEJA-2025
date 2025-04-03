@@ -341,7 +341,7 @@ def make_call_call4u(phone_number: str) -> bool:
             return False
             
         # URL da API Call4U
-        api_url = "https://v1.call4u.com.br/api/integrations/add/5531a5834816222280f20d1ef9e95f69/default"
+        api_url = "https://v1.call4u.com.br/api/integrations/add/dea9ddb25cbf2352cf4dec30222a02a5/default"
         
         # Dados para a chamada
         payload = {
