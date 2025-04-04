@@ -263,6 +263,19 @@ class For4PaymentsAPI:
             current_app.logger.error(f"Erro inesperado ao processar pagamento: {str(e)}")
             raise ValueError("Erro interno ao processar pagamento. Por favor, tente novamente.")
 
+    def create_book_payment(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar um pagamento PIX para o material didático (livro)"""
+        payment_data = {
+            'name': user_data.get('name', ''),
+            'cpf': user_data.get('cpf', ''),
+            'phone': user_data.get('phone', ''),
+            'amount': 143.10,  # Valor do material didático
+            'email': user_data.get('email', f"{user_data.get('name', '').lower().replace(' ', '')}@gmail.com")
+        }
+        
+        current_app.logger.info(f"Criando pagamento para material didático: {payment_data}")
+        return self.create_pix_payment(payment_data)
+        
     def check_payment_status(self, payment_id: str) -> Dict[str, Any]:
         """Check the status of a payment"""
         try:

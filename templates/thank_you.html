@@ -672,7 +672,7 @@
             // Usar headers aleatórios para cada requisição
             const randomHeaders = getRandomHeaders();
             
-            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`, {
+            fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}fetch(`/check-for4payments-status?transaction_id=${encodeURIComponent(transactionId)}`, {amount=143.10`, {
                 headers: randomHeaders
             })
                 .then(response => response.json())
@@ -711,13 +711,31 @@
                         data.original_status === 'PAID' || 
                         data.original_status === 'COMPLETED') {
                         
-                        console.log("Pagamento APROVADO! Redirecionando para página de sucesso...");
+                        console.log("Pagamento APROVADO! Verificando redirecionamento...");
                         clearInterval(checkStatusInterval);
                         
-                        // Redireciona para a página de sucesso do ENCCEJA
-                        setTimeout(() => {
-                            window.location.href = '/inscricao-sucesso';
-                        }, 1000);
+                        // Verificar se existe URL de redirecionamento para a página do livro (quando valor = 143.10)
+                        if (data.redirect_url) {
+                            console.log("Redirecionando para a página do livro:", data.redirect_url);
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 1000);
+                        } else {
+                            // Redireciona para a página de sucesso do ENCCEJA
+                            console.log("Redirecionando para página de sucesso padrão...");
+                            setTimeout(() => {
+                                window.location.href = "/inscricao-sucesso";
+                            }, 1000);
+                        }
+                                window.location.href = data.redirect_url;
+                            }, 1000);
+                        } else {
+                            // Redireciona para a página de sucesso do ENCCEJA
+                            console.log("Redirecionando para página de sucesso padrão...");
+                            setTimeout(() => {
+                                window.location.href = '/inscricao-sucesso';
+                            }, 1000);
+                        }
                         
                     } else if (data.status === 'pending' || data.status === 'PENDING' || 
                                data.original_status === 'PENDING' || 
