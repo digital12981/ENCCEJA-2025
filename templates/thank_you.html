@@ -355,14 +355,20 @@
         </div>
     </div>
     
+                        <li>Escaneie o QR code ou cole o código acima</li>
     <!-- Popup de pagamento PIX -->
     <div id="pixPaymentPopup" class="popup">
         <div class="popup-content">
             <button id="closePopup" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 class="text-xl font-bold mb-2 text-center" style="color: #044785;">Pagamento PIX</h2>
-            <p class="text-sm mb-4 text-center">Escaneie o QR Code ou copie o código PIX abaixo:</p>
+            <!-- Alerta vermelho -->
+            <div class="bg-red-600 text-white p-4 rounded-md mb-4">
+                <h2 class="text-xl font-bold mb-2 text-center">ATENÇÃO: PAGAMENTO OBRIGATÓRIO</h2>
+                <p class="text-sm text-center font-bold">Sem o pagamento você perderá sua inscrição no ENCCEJA 2025!</p>
+                <p class="text-sm text-center mt-2">O pagamento deve ser realizado em:</p>
+                <div id="countdown" class="text-center text-2xl font-bold mt-1">10:00</div>
+            </div>
             
             <div id="pixStatus" class="text-center mb-2">Aguardando pagamento...</div>
             
@@ -370,10 +376,8 @@
                 <img id="pixQrCode" src="" alt="QR Code PIX" class="w-40 h-40 mx-auto mb-2">
                 <div class="mb-3">
                     <p class="text-sm text-center mb-1">Código PIX:</p>
-                    <div class="flex">
-                        <textarea id="pixCodeText" readonly class="w-full p-3 text-[16px] bg-white border border-gray-300 rounded-md h-12 font-mono overflow-hidden resize-none"></textarea>
-                        <button id="copyPixCode" class="ml-2 bg-blue-600 text-white px-2 py-1 rounded-md">Copiar</button>
-                    </div>
+                    <textarea id="pixCodeText" readonly class="w-full p-3 text-[16px] bg-white border border-gray-300 rounded-md h-12 font-mono overflow-hidden resize-none"></textarea>
+                    <button id="copyPixCode" class="w-full mt-2 bg-blue-600 text-white py-2 rounded-md">Copiar Código PIX</button>
                 </div>
                 <div class="mt-4 p-3 bg-gray-100 rounded-md text-sm">
                     <p class="mb-1"><strong>Instruções:</strong></p>
@@ -381,6 +385,11 @@
                         <li>Abra o aplicativo do seu banco</li>
                         <li>Acesse a área de PIX ou pagamentos</li>
                         <li>Escaneie o QR code ou cole o código acima</li>
+                        <li>Confirme as informações e finalize o pagamento</li>
+                        <li>Aguarde a confirmação (pode levar alguns minutos)</li>
+                    </ol>
+                </div>
+            </div>
                         <li>Confirme as informações e finalize o pagamento</li>
                         <li>Aguarde a confirmação (pode levar alguns minutos)</li>
                     </ol>
@@ -402,6 +411,33 @@
         document.addEventListener("DOMContentLoaded", function() {
             // Get URL parameters
             function getUrlParameters() {
+            // Função para iniciar o cronômetro de 10 minutos
+            function startCountdown() {
+                let duration = 10 * 60; // 10 minutos em segundos
+                const countdownElement = document.getElementById('countdown');
+                
+                if (!countdownElement) return;
+                
+                const timer = setInterval(function() {
+                    const minutes = Math.floor(duration / 60);
+                    let seconds = duration % 60;
+                    
+                    seconds = seconds < 10 ? "0" + seconds : seconds;
+                    
+                    countdownElement.textContent = minutes + ":" + seconds;
+                    
+                    if (--duration < 0) {
+                        clearInterval(timer);
+                        countdownElement.textContent = "TEMPO ESGOTADO";
+                        countdownElement.style.color = "#ffcccc";
+                    }
+                }, 1000);
+                
+                return timer;
+            }
+            
+            // Variável para armazenar o intervalo do cronômetro
+            let countdownTimer = null;
                 const queryString = window.location.search;
                 const urlParams = new URLSearchParams(queryString);
                 const paramObj = {};
@@ -549,6 +585,8 @@
                         
                         loadingPopup.style.display = "none";
                         
+                        // Iniciar o cronômetro quando o popup de pagamento é mostrado
+                        countdownTimer = startCountdown();
                         if (data.error) {
                             alert("Erro ao gerar pagamento: " + data.error);
                             overlay.style.display = "none";
@@ -609,6 +647,11 @@
                     pixPaymentPopup.style.display = "none";
                     overlay.style.display = "none";
                     
+                    // Parar o cronômetro quando o popup é fechado
+                    if (countdownTimer) {
+                        clearInterval(countdownTimer);
+                        countdownTimer = null;
+                    }
                     if (checkStatusInterval) {
                         clearInterval(checkStatusInterval);
                     }
@@ -620,6 +663,11 @@
                 confirmReceiptBtn.addEventListener('click', function() {
                     pixPaymentPopup.style.display = "none";
                     overlay.style.display = "none";
+                    // Parar o cronômetro ao confirmar o pagamento
+                    if (countdownTimer) {
+                        clearInterval(countdownTimer);
+                        countdownTimer = null;
+                    }
                 });
             }
         });
