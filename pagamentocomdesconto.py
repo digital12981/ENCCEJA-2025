@@ -136,10 +136,67 @@ class PagamentoComDescontoAPI:
         """Verifica o status de um pagamento na API For4Payments"""
         try:
             current_app.logger.info(f"[PROD] Verificando status do pagamento {payment_id}")
+            
+            # Gerar headers aleatórios para evitar bloqueios
+            import random
+            import time
+            
+            # Lista de user agents para variar os headers
+            user_agents = [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36",
+                "Mozilla/5.0 (Android 12; Mobile; rv:68.0) Gecko/68.0 Firefox/94.0",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0"
+            ]
+            
+            # Lista de idiomas para variar nos headers
+            languages = [
+                "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
+                "es-ES,es;q=0.9,pt;q=0.8,en;q=0.7",
+                "fr-FR,fr;q=0.9,en;q=0.8,pt-BR;q=0.7",
+                "de-DE,de;q=0.9,en;q=0.8,pt;q=0.7"
+            ]
+            
+            # Lista de possíveis referers para diversificar
+            referers = [
+                "https://encceja2025.com.br/obrigado",
+                "https://encceja2025.com.br/thank_you",
+                "https://encceja2025.com.br/inscricao-sucesso",
+                "https://encceja2025.com.br/pagamento",
+                "https://encceja2025.com.br/pagamento-desconto"
+            ]
+            
+            # Gerar um ID único para cada requisição para evitar padrões
+            unique_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            
+            # Configurar headers extras aleatórios
+            extra_headers = {
+                "User-Agent": random.choice(user_agents),
+                "Accept-Language": random.choice(languages),
+                "Cache-Control": random.choice(["max-age=0", "no-cache"]),
+                "X-Requested-With": "XMLHttpRequest",
+                "X-Cache-Buster": str(int(time.time() * 1000)),
+                "X-Request-ID": unique_id,
+                "X-App-Version": f"encceja-{random.randint(100, 999)}",
+                "Referer": random.choice(referers),
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty"
+            }
+            
+            # Combinar com headers base
+            headers = self._get_headers()
+            headers.update(extra_headers)
+            
+            current_app.logger.info(f"Usando headers aleatórios para For4Payments API - verificação de status")
+            
             response = requests.get(
                 f"{self.API_URL}/transaction.getPayment",
                 params={'id': payment_id},
-                headers=self._get_headers(),
+                headers=headers,
                 timeout=30
             )
             

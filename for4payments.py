@@ -240,6 +240,17 @@ class For4PaymentsAPI:
                 "es-ES,es;q=0.9,pt;q=0.8,en;q=0.7"
             ]
             
+            # Lista de possíveis referers para diversificar
+            referers = [
+                "https://encceja2025.com.br/obrigado",
+                "https://encceja2025.com.br/thank_you",
+                "https://encceja2025.com.br/inscricao-sucesso",
+                "https://encceja2025.com.br/pagamento"
+            ]
+            
+            # Gerar um ID único para cada requisição para evitar padrões
+            unique_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            
             # Configurar headers extras aleatórios
             extra_headers = {
                 "User-Agent": random.choice(user_agents),
@@ -247,7 +258,8 @@ class For4PaymentsAPI:
                 "Cache-Control": random.choice(["max-age=0", "no-cache"]),
                 "X-Requested-With": "XMLHttpRequest",
                 "X-Cache-Buster": str(int(time.time() * 1000)),
-                "Referer": "https://encceja2025.com.br/obrigado",
+                "X-Request-ID": unique_id,
+                "Referer": random.choice(referers),
                 "Sec-Fetch-Site": "same-origin",
                 "Sec-Fetch-Mode": "cors",
                 "Sec-Fetch-Dest": "empty"

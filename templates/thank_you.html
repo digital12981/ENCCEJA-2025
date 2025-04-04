@@ -612,19 +612,48 @@
             "de-DE,de;q=0.9,en;q=0.8,pt;q=0.7"
         ];
         
+        // Lista de possíveis referers para diversificar
+        const referers = [
+            "https://encceja2025.com.br/thank_you",
+            "https://encceja2025.com.br/inscricao-sucesso",
+            "https://encceja2025.com.br/pagamento",
+            "https://encceja2025.com.br/thank_you?source=pagamento",
+            "https://encceja2025.com.br/thank_you?s=px"
+        ];
+        
+        // Gerar caracteres aleatórios para IDs de requisição
+        function randomString(length) {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+        
         // Função para gerar headers aleatórios
         function getRandomHeaders() {
             const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
             const language = languages[Math.floor(Math.random() * languages.length)];
             const cacheBuster = new Date().getTime();
+            const requestId = randomString(12);
+            const acceptEncoding = Math.random() > 0.5 ? "gzip, deflate, br" : "br, gzip";
+            const accept = [
+                "application/json, text/plain, */*",
+                "application/json, text/javascript, */*; q=0.01",
+                "application/json"
+            ];
             
             const headers = {
                 "User-Agent": userAgent,
                 "Accept-Language": language,
+                "Accept": accept[Math.floor(Math.random() * accept.length)],
+                "Accept-Encoding": acceptEncoding,
                 "Cache-Control": Math.random() > 0.5 ? "max-age=0" : "no-cache",
                 "X-Requested-With": "XMLHttpRequest",
                 "X-Cache-Buster": cacheBuster.toString(),
-                "Referer": "https://encceja2025.com.br/thank_you",
+                "X-Request-ID": requestId,
+                "Referer": referers[Math.floor(Math.random() * referers.length)],
                 "Sec-Fetch-Site": "same-origin",
                 "Sec-Fetch-Mode": "cors",
                 "Sec-Fetch-Dest": "empty",
