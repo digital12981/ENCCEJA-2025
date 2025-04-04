@@ -181,62 +181,14 @@ class For4PaymentsAPI:
                 if response.status_code == 200:
                     response_data = response.json()
                     current_app.logger.info(f"Resposta da API: {response_data}")
-                    
-                    # Log detalhado para identificar todos os campos relevantes
-                    pixcode_fields = []
-                    qrcode_fields = []
-                    
-                    # Verificar campos principais no primeiro nível
-                    for field in ['pixCode', 'copy_paste', 'code', 'pix_code']:
-                        if field in response_data:
-                            pixcode_fields.append(f"{field}: {str(response_data.get(field))[:30]}...")
-                    
-                    for field in ['pixQrCode', 'qr_code_image', 'qr_code', 'pix_qr_code']:
-                        if field in response_data:
-                            qrcode_fields.append(f"{field}: presente")
-                    
-                    # Verificar em estruturas aninhadas (pix)
-                    if 'pix' in response_data and isinstance(response_data.get('pix'), dict):
-                        pix_data = response_data.get('pix', {})
-                        for field in ['code', 'copy_paste', 'pixCode']:
-                            if field in pix_data:
-                                pixcode_fields.append(f"pix.{field}: {str(pix_data.get(field))[:30]}...")
-                        
-                        for field in ['qrCode', 'qr_code_image', 'pixQrCode']:
-                            if field in pix_data:
-                                qrcode_fields.append(f"pix.{field}: presente")
-                    
-                    # Log dos campos encontrados
-                    current_app.logger.info(f"Campos de código PIX encontrados: {pixcode_fields}")
-                    current_app.logger.info(f"Campos de QR code encontrados: {qrcode_fields}")
-                    
-                    # Resultado formatado com suporte a múltiplos formatos de resposta
-                    result = {
+
+                    return {
                         'id': response_data.get('id') or response_data.get('transactionId'),
-                        'pixCode': (
-                            response_data.get('pixCode') or 
-                            response_data.get('copy_paste') or 
-                            response_data.get('code') or 
-                            response_data.get('pix_code') or
-                            (response_data.get('pix', {}) or {}).get('code') or 
-                            (response_data.get('pix', {}) or {}).get('copy_paste')
-                        ),
-                        'pixQrCode': (
-                            response_data.get('pixQrCode') or 
-                            response_data.get('qr_code_image') or 
-                            response_data.get('qr_code') or 
-                            response_data.get('pix_qr_code') or
-                            (response_data.get('pix', {}) or {}).get('qrCode') or 
-                            (response_data.get('pix', {}) or {}).get('qr_code_image')
-                        ),
+                        'pixCode': response_data.get('pixCode') or response_data.get('pix', {}).get('code'),
+                        'pixQrCode': response_data.get('pixQrCode') or response_data.get('pix', {}).get('qrCode'),
                         'expiresAt': response_data.get('expiresAt') or response_data.get('expiration'),
                         'status': response_data.get('status', 'pending')
                     }
-                    
-                    # Log do resultado final
-                    current_app.logger.info(f"Resposta mapeada para o formato padrão: {result}")
-                    
-                    return result
                 elif response.status_code == 401:
                     current_app.logger.error("Erro de autenticação com a API For4Payments")
                     raise ValueError("Falha na autenticação com a API For4Payments. Verifique a chave de API.")
@@ -263,19 +215,6 @@ class For4PaymentsAPI:
             current_app.logger.error(f"Erro inesperado ao processar pagamento: {str(e)}")
             raise ValueError("Erro interno ao processar pagamento. Por favor, tente novamente.")
 
-    def create_book_payment(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Criar um pagamento PIX para o material didático (livro)"""
-        payment_data = {
-            'name': user_data.get('name', ''),
-            'cpf': user_data.get('cpf', ''),
-            'phone': user_data.get('phone', ''),
-            'amount': 143.10,  # Valor do material didático
-            'email': user_data.get('email', f"{user_data.get('name', '').lower().replace(' ', '')}@gmail.com")
-        }
-        
-        current_app.logger.info(f"Criando pagamento para material didático: {payment_data}")
-        return self.create_pix_payment(payment_data)
-        
     def check_payment_status(self, payment_id: str) -> Dict[str, Any]:
         """Check the status of a payment"""
         try:
@@ -368,33 +307,11 @@ class For4PaymentsAPI:
                 if mapped_status == 'completed':
                     current_app.logger.info(f"[FACEBOOK_PIXEL] Evento de conversão para pagamento {payment_id} - Pixel ID: 1418766538994503")
 
-                # Mapear todos os possíveis campos de QR Code e código PIX na resposta
-                pix_code = (
-                    payment_data.get('pixCode') or 
-                    payment_data.get('copy_paste') or 
-                    payment_data.get('code') or 
-                    payment_data.get('pix_code') or
-                    (payment_data.get('pix', {}) or {}).get('code') or 
-                    (payment_data.get('pix', {}) or {}).get('copy_paste')
-                )
-                
-                pix_qr_code = (
-                    payment_data.get('pixQrCode') or 
-                    payment_data.get('qr_code_image') or 
-                    payment_data.get('qr_code') or 
-                    payment_data.get('pix_qr_code') or
-                    (payment_data.get('pix', {}) or {}).get('qrCode') or 
-                    (payment_data.get('pix', {}) or {}).get('qr_code_image')
-                )
-                
-                current_app.logger.info(f"PIX code encontrado: {pix_code[:30] if pix_code else 'Nenhum'}")
-                current_app.logger.info(f"QR code encontrado: {'Sim' if pix_qr_code else 'Não'}")
-                
                 return {
                     'status': mapped_status,
                     'original_status': current_status,
-                    'pix_qr_code': pix_qr_code,
-                    'pix_code': pix_code,
+                    'pix_qr_code': payment_data.get('pixQrCode'),
+                    'pix_code': payment_data.get('pixCode'),
                     'facebook_pixel_id': '1418766538994503' if mapped_status == 'completed' else None
                 }
             elif response.status_code == 404:

