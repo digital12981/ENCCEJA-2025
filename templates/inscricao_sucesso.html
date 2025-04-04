@@ -427,18 +427,23 @@
                                         <div class="mb-4 border p-4 rounded-lg">
                                             <img id="pixQrCode" src="" alt="QR Code PIX" class="mx-auto w-48 h-48">
                                         </div>
-                                        
                                         <!-- Código PIX para copiar -->
                                         <div class="mb-6 w-full max-w-md">
                                             <p class="text-sm mb-2 text-gray-600 text-center">Ou copie o código PIX abaixo:</p>
-                                            <div class="relative">
+                                            <div class="mb-2">
                                                 <input id="pixCodeText" type="text" readonly 
-                                                    class="w-full border border-gray-300 p-3 pr-12 rounded-md bg-gray-50 text-sm"
+                                                    class="w-full border border-gray-300 p-3 rounded-md bg-gray-50 text-sm"
                                                     value="">
-                                                <button id="copyPixCodeBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                                            </div>
+                                            <div class="flex justify-center">
+                                                <button id="copyPixCodeBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
                                                     onclick="copyPixCode()">
-                                                    <i class="fas fa-copy"></i>
+                                                    <i class="fas fa-copy mr-2"></i> Copiar código PIX
                                                 </button>
+                                            </div>
+                                            <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
+                                                Código PIX copiado com sucesso!
+                                            </p>
                                             </div>
                                             <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
                                                 Código PIX copiado com sucesso!
@@ -537,22 +542,23 @@
             <p class="text-gray-600">Gerando código PIX, aguarde...</p>
         </div>
         
-        <div id="pixContent" class="hidden flex flex-col items-center">
-            <!-- QR Code PIX -->
-            <div class="mb-4 border p-4 rounded-lg">
-                <img id="pixQrCode" src="" alt="QR Code PIX" class="mx-auto w-48 h-48">
-            </div>
-            
             <!-- Código PIX para copiar -->
             <div class="mb-6 w-full max-w-md">
                 <p class="text-sm mb-2 text-gray-600 text-center">Ou copie o código PIX abaixo:</p>
-                <div class="relative">
+                <div class="mb-2">
                     <input id="pixCodeText" type="text" readonly 
-                        class="w-full border border-gray-300 p-3 pr-12 rounded-md bg-gray-50 text-sm"
+                        class="w-full border border-gray-300 p-3 rounded-md bg-gray-50 text-sm"
                         value="">
-                    <button id="copyPixCodeBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                </div>
+                <div class="flex justify-center">
+                    <button id="copyPixCodeBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
                         onclick="copyPixCode()">
-                        <i class="fas fa-copy"></i>
+                        <i class="fas fa-copy mr-2"></i> Copiar código PIX
+                    </button>
+                </div>
+                <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
+                    Código PIX copiado com sucesso!
+                </p>
                     </button>
                 </div>
                 <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
