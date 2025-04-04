@@ -1538,6 +1538,108 @@ def local_prova():
 def inscricao_sucesso():
     """Página de sucesso da inscrição"""
     return render_template('inscricao_sucesso.html')
+    
+@app.route('/pagar-frete', methods=['POST'])
+def pagar_frete():
+    """Cria uma transação PIX para pagamento do frete"""
+    try:
+        data = request.json
+        telefone = data.get('telefone', '')
+        
+        # Criar dados para o pagamento
+        payment_data = {
+            'name': 'Pagamento do Frete',
+            'cpf': '78964164172',  # CPF sem pontuação
+            'email': 'frete' + str(int(time.time())) + '@gmail.com',  # Email aleatório
+            'phone': telefone,
+            'amount': 52.60  # Valor fixo do frete
+        }
+        
+        # Criar a transação PIX
+        from for4pagamentos import create_payment_api
+        api = create_payment_api()
+        result = api.create_pix_payment(payment_data)
+        
+        return jsonify({
+            'success': True,
+            'transaction_id': result.get('id'),
+            'pixCode': result.get('pixCode'),
+            'pixQrCode': result.get('pixQrCode')
+        })
+    
+    except Exception as e:
+        app.logger.error(f"Erro ao gerar pagamento do frete: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@app.route('/verificar-pagamento-frete', methods=['POST'])
+def verificar_pagamento_frete():
+    """Verifica o status do pagamento do frete"""
+    try:
+        data = request.json
+        transaction_id = data.get('transactionId')
+        
+        if not transaction_id:
+            return jsonify({'success': False, 'error': 'ID da transação não fornecido'}), 400
+            
+        # Verificar status do pagamento
+        from for4pagamentos import create_payment_api
+        api = create_payment_api()
+        status_data = api.check_payment_status(transaction_id)
+        
+        app.logger.info(f"[PROD] Verificando status do pagamento {transaction_id}")
+        
+        # Transformar status da API para nosso formato padrão
+        original_status = status_data.get('status')
+        
+        if original_status in ['APPROVED', 'PAID', 'COMPLETED']:
+            status = 'completed'
+        elif original_status in ['PENDING', 'PROCESSING']:
+            status = 'pending'
+        else:
+            status = 'failed'
+            
+        # Se o pagamento está em status pendente, vamos buscar os dados do PIX novamente
+        # já que a API não retorna o pixCode e pixQrCode no check_payment_status
+        pixCode = status_data.get('pixCode')
+        pixQrCode = status_data.get('pixQrCode')
+        
+        # Para pagamentos pendentes sem código PIX, vamos recuperar o código original
+        if status == 'pending' and (not pixCode or not pixQrCode):
+            try:
+                # Recriar o PIX com os mesmos dados
+                payment_data = {
+                    'name': 'Pagamento do Frete',
+                    'cpf': '78964164172',  # CPF sem pontuação
+                    'email': 'frete' + str(int(time.time())) + '@gmail.com',  # Email aleatório
+                    'phone': '61982132603',  # Telefone fixo para reuso
+                    'amount': 52.60  # Valor fixo do frete
+                }
+                
+                result = api.create_pix_payment(payment_data)
+                app.logger.info(f"[PROD] Recriando PIX para pagamento pendente: {transaction_id}")
+                pixCode = result.get('pixCode')
+                pixQrCode = result.get('pixQrCode')
+            except Exception as e:
+                app.logger.error(f"Erro ao recriar PIX: {str(e)}")
+                # Continuar com os valores originais (vazios) se falhar
+        
+        return jsonify({
+            'success': True,
+            'status': status,
+            'original_status': original_status,
+            'pixQrCode': pixQrCode,
+            'pixCode': pixCode
+        })
+            
+    except Exception as e:
+        app.logger.error(f"Erro ao verificar pagamento do frete: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/encceja-info')
 def encceja_info():
