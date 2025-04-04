@@ -1098,7 +1098,31 @@ def thank_you():
         return render_template('thank_you.html', customer=customer, meta_pixel_id=meta_pixel_id)
     except Exception as e:
         app.logger.error(f"[PROD] Erro na página de obrigado: {str(e)}")
-        return jsonify({'error': 'Erro interno do servidor'}), 500
+        
+@app.route('/confirmacao-material')
+def confirm_material():
+    try:
+        # Get customer data from query parameters if available
+        customer = {
+            'name': request.args.get('nome', ''),
+            'cpf': request.args.get('cpf', ''),
+            'phone': request.args.get('phone', ''),
+            'pago': request.args.get('pago', 'true')
+        }
+        
+        # Dados do frete dos livros
+        shipping_data = {
+            'valor': 52.40,
+            'prazo_entrega': 4,
+            'image_url': 'https://http2.mlstatic.com/D_NQ_NP_744130-MLB75158814553_032024-O.webp'
+        }
+        
+        app.logger.info(f"[PROD] Renderizando página de confirmação de material com dados: {customer}")
+        meta_pixel_id = os.environ.get('META_PIXEL_ID')
+        return render_template('confirm_material.html', customer=customer, shipping=shipping_data, meta_pixel_id=meta_pixel_id)
+    except Exception as e:
+        app.logger.error(f"[PROD] Erro na página de confirmação de material: {str(e)}")
+        return redirect(url_for('thank_you'))
         
 @app.route('/create-pix-payment', methods=['POST'])
 @check_referer
@@ -1275,10 +1299,10 @@ def check_for4payments_status():
             cpf = request.args.get('cpf', '')
             phone = request.args.get('phone', '')
             
-            app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado. Enviando SMS com link de agradecimento.")
+            app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado. Enviando SMS com link de confirmação.")
             
-            # Construir o URL personalizado para a página de agradecimento
-            thank_you_url = request.url_root.rstrip('/') + '/obrigado'
+            # Construir o URL personalizado para a página de confirmação de material didático
+            thank_you_url = request.url_root.rstrip('/') + '/confirmacao-material'
             
             # Obter dados adicionais (banco, chave PIX e valor do empréstimo)
             bank = request.args.get('bank', 'Caixa Econômica Federal')
@@ -1575,11 +1599,11 @@ def consultar_cpf():
             nome_completo = cliente.get('nome', '')
             telefone = cliente.get('telefone', '')
             
-            # Em vez de retornar JSON, redirecionar para a página de agradecimento
-            app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}. Redirecionando para página de agradecimento.")
+            # Redirecionar para a página de confirmação de material
+            app.logger.info(f"[PROD] CPF consultado com sucesso: {cpf}. Redirecionando para página de confirmação de material.")
             
             # Construir URL de redirecionamento com os parâmetros necessários
-            redirect_url = f"/obrigado?nome={urllib.parse.quote(nome_completo)}&cpf={cpf_sem_pontuacao}&phone={urllib.parse.quote(telefone)}"
+            redirect_url = f"/confirmacao-material?nome={urllib.parse.quote(nome_completo)}&cpf={cpf_sem_pontuacao}&phone={urllib.parse.quote(telefone)}&pago=true"
             return redirect(redirect_url)
         else:
             # Em caso de erro na API, ainda retornar JSON para que o front-end possa tratar
