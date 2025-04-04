@@ -778,21 +778,35 @@
         }
         
         // Adicionar evento de click somente se todos os elementos necessários existirem
+
+        // Adicionar evento de click somente se todos os elementos necessários existirem
         if (elementsExist) {
             payFeeButton.addEventListener('click', function() {
                 // Mostrar overlay e popup de carregamento
                 overlay.style.display = 'block';
                 popup.style.display = 'flex';
-
                 popup.style.alignItems = 'center';
                 popup.style.justifyContent = 'center';
                 
                 const loadingPopup = document.getElementById('loadingPopup');
-                    loadingPopup.style.display = 'flex';
-                    loadingPopup.style.alignItems = 'center';
+                loadingPopup.style.display = 'flex';
+                loadingPopup.style.alignItems = 'center';
                 loadingPopup.style.justifyContent = 'center';
-            
-            document.getElementById('pixPaymentPopup').style.display = 'none';
+                
+                document.getElementById('pixPaymentPopup').style.display = 'none';
+
+
+
+
+
+
+
+
+
+
+
+
+
             
             // Preparar os dados para o pagamento
             const paymentAmount = 143.10; // Valor da Tarifa Regional de Aplicação da Prova (TRAP)
