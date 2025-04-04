@@ -465,21 +465,6 @@
                                         <p id="pixErrorMessage">Ocorreu um erro ao gerar o pagamento. Por favor, tente novamente.</p>
                                     </div>
                                     
-                                    <!-- Botões de Ação -->
-                                    <div class="flex justify-center space-x-4 mt-4">
-                                        <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
-                                                onclick="closePixModal()">Cancelar</button>
-                                        <button type="button" id="verificarPagamentoBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
-                                            Já paguei
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
     <!-- Footer -->
     <footer class="footer-bg text-white py-4 text-xs">
@@ -583,12 +568,9 @@
         
         <!-- Botões de Ação -->
         <div class="flex justify-center space-x-4 mt-4">
-            <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
-                    onclick="closePixModal()">Cancelar</button>
-            <button type="button" id="verificarPagamentoBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
-                Já paguei
-            </button>
-        </div>
+        <!-- Sem botões de ação -->
+    </div>
+</div>
     </div>
 </div>
 
@@ -606,7 +588,7 @@
         
         // Inicializar botões
         document.getElementById('copyPixCodeBtn').addEventListener('click', copyPixCode);
-        document.getElementById('verificarPagamentoBtn').addEventListener('click', verificarPagamentoManual);
+        // Botão removido: document.getElementById('verificarPagamentoBtn').addEventListener('click', verificarPagamentoManual);
     });
     
     // Função para processar o pagamento do frete
@@ -661,7 +643,7 @@
                 // Esconder o loading e mostrar o conteúdo
                 document.getElementById('pixLoading').classList.add('hidden');
                 document.getElementById('pixContent').classList.remove('hidden');
-                document.getElementById('verificarPagamentoBtn').classList.remove('hidden');
+                // Botão removido: // document.getElementById('verificarPagamentoBtn').classList.remove('hidden');
                 
                 // Iniciar verificação automática do pagamento
                 startPaymentCheck();
@@ -713,10 +695,10 @@
                     `;
                     
                     // Desabilitar o botão de verificação
-                    document.getElementById('verificarPagamentoBtn').disabled = true;
-                    document.getElementById('verificarPagamentoBtn').classList.add('bg-green-300');
-                    document.getElementById('verificarPagamentoBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
-                    document.getElementById('verificarPagamentoBtn').textContent = 'Pagamento Confirmado';
+                    // document.getElementById('verificarPagamentoBtn').disabled = true;
+                    // document.getElementById('verificarPagamentoBtn').classList.add('bg-green-300');
+                    // document.getElementById('verificarPagamentoBtn').classList.remove('bg-green-600', 'hover:bg-green-700');
+                    // document.getElementById('verificarPagamentoBtn').textContent = 'Pagamento Confirmado';
                     
                     // Redirecionar após 3 segundos
                     setTimeout(() => {
@@ -765,7 +747,7 @@
         document.getElementById('pixLoading').classList.remove('hidden');
         document.getElementById('pixContent').classList.add('hidden');
         document.getElementById('pixError').classList.add('hidden');
-        document.getElementById('verificarPagamentoBtn').classList.add('hidden');
+        // document.getElementById('verificarPagamentoBtn').classList.add('hidden');
     }
     
     // Função para fechar o modal de PIX
