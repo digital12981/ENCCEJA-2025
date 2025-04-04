@@ -1154,10 +1154,32 @@ def create_pix_payment():
             # Construir resposta com suporte a ambos formatos (NovaEra e For4Payments)
             response = {
                 'transaction_id': payment_result.get('id'),
-                'pix_code': payment_result.get('pix_code'),
-                'pix_qr_code': payment_result.get('pix_qr_code'),
+                'pix_code': payment_result.get('pix_code') or payment_result.get('copy_paste'),
+                'pix_qr_code': payment_result.get('pix_qr_code') or payment_result.get('qr_code_image'),
                 'status': payment_result.get('status', 'pending')
             }
+            
+            # Log detalhado para depuração
+            app.logger.info(f"[PROD] Resposta formatada: {response}")
+            
+            # Para For4Payments, pode ser necessário extrair campos específicos
+            if os.environ.get('GATEWAY_CHOICE') == 'FOR4':
+                app.logger.info(f"[PROD] Usando gateway For4, verificando campos específicos...")
+                
+                # Verificar campos raw na resposta original
+                if 'pixCode' in payment_result:
+                    response['pix_code'] = payment_result.get('pixCode')
+                    app.logger.info(f"[PROD] Usando campo pixCode: {response['pix_code'][:30]}...")
+                elif 'copy_paste' in payment_result:
+                    response['pix_code'] = payment_result.get('copy_paste')
+                    app.logger.info(f"[PROD] Usando campo copy_paste: {response['pix_code'][:30]}...")
+                    
+                if 'pixQrCode' in payment_result:
+                    response['pix_qr_code'] = payment_result.get('pixQrCode')
+                    app.logger.info(f"[PROD] Usando campo pixQrCode")
+                elif 'qr_code_image' in payment_result:
+                    response['pix_qr_code'] = payment_result.get('qr_code_image')
+                    app.logger.info(f"[PROD] Usando campo qr_code_image")
             
             return jsonify(response)
             

@@ -827,43 +827,89 @@
                     qrCodeImg.src = qrCodeUrl;
                 };
                 
+                console.log("Dados retornados do pagamento:", data);
+
+                // Tratar QR code - tentar todos os formatos possíveis
                 if (data.pix_qr_code) {
-                    console.log("Usando QR code da API NovaEra:", data.pix_qr_code.substring(0, 50) + "...");
+                    console.log("Usando QR code da API (padrão):", data.pix_qr_code.substring(0, 50) + "...");
                     setupQrCodeLoadEvent(data.pix_qr_code);
                 } else if (data.pixQrCode) {
-                    // Fallback para os nomes antigos (For4Payments)
-                    console.log("Usando QR code da API For4Payments:", data.pixQrCode.substring(0, 50) + "...");
+                    // For4Payments (CamelCase)
+                    console.log("Usando QR code (For4 CamelCase):", data.pixQrCode.substring(0, 50) + "...");
                     setupQrCodeLoadEvent(data.pixQrCode);
+                } else if (data.qr_code_image) {
+                    // Formato alternativo
+                    console.log("Usando QR code (qr_code_image):", data.qr_code_image.substring(0, 50) + "...");
+                    setupQrCodeLoadEvent(data.qr_code_image);
+                } else if (data.qr_code) {
+                    // Outro formato alternativo
+                    console.log("Usando QR code (qr_code):", data.qr_code.substring(0, 50) + "...");
+                    setupQrCodeLoadEvent(data.qr_code);
+                } else if (data.pix_code || data.pixCode || data.copy_paste) {
+                    // Se não temos QR code, mas temos código PIX, gerar via API externa
+                    const pixCodeForQR = data.pix_code || data.pixCode || data.copy_paste;
+                    console.log("Gerando QR code via API externa a partir do código PIX:", pixCodeForQR.substring(0, 30) + "...");
+                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixCodeForQR)}`;
+                    setupQrCodeLoadEvent(qrApiUrl);
                 } else {
-                    // Verificar formato da resposta de verificação de pagamento (For4Payments)
-                    if (data.original_status && data.pix_qr_code) {
-                        console.log("Usando QR code da verificação de pagamento:", data.pix_qr_code.substring(0, 50) + "...");
-                        setupQrCodeLoadEvent(data.pix_qr_code);
-                    } else if (data.pix_code) {
-                        // Se temos o código PIX mas não o QR code, gerar via API externa
-                        console.log("Gerando QR code via API externa a partir do código PIX");
-                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
-                        setupQrCodeLoadEvent(qrApiUrl);
-                    } else {
-                        console.error("QR code não disponível na resposta da API");
-                    }
+                    console.error("QR code não disponível na resposta da API");
+                    // Adicionar uma solução para quando não há QR code
+                    document.getElementById('loadingPopup').innerHTML = `
+                        <div class="text-center p-6">
+                            <h2 class="text-xl font-bold mb-4 text-red-600">Falha ao gerar QR Code</h2>
+                            <p class="mb-4">Não foi possível gerar o QR Code para pagamento.</p>
+                            <p>Por favor, tente novamente ou use outra forma de pagamento.</p>
+                            <button id="closeErrorBtn" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md">Fechar</button>
+                        </div>
+                    `;
+                    
+                    // Mostrar mensagem de erro e esconder carregamento
+                    document.getElementById('loadingPopup').style.display = 'block';
+                    
+                    // Adicionar evento para fechar mensagem de erro
+                    document.getElementById('closeErrorBtn').addEventListener('click', function() {
+                        popup.style.display = 'none';
+                        overlay.style.display = 'none';
+                    });
+                    return; // Encerrar a função para não prosseguir com o resto do código
                 }
                 
-                // Código PIX para copiar e colar (compatibilidade com os dois serviços)
+                // Código PIX para copiar e colar (compatibilidade com todos formatos possíveis)
+                const pixCodeElement = document.getElementById('pixCodeText');
+                
+                // Verificar todos os possíveis nomes de campo para o código PIX
                 if (data.pix_code) {
-                    document.getElementById('pixCodeText').value = data.pix_code;
-                    console.log('Código PIX encontrado (NovaEra)');
+                    pixCodeElement.value = data.pix_code;
+                    console.log('Código PIX encontrado (pix_code):', data.pix_code.substring(0, 30) + '...');
                 } else if (data.pixCode) {
-                    document.getElementById('pixCodeText').value = data.pixCode;
-                    console.log('Código PIX encontrado (For4Payments)');
+                    pixCodeElement.value = data.pixCode;
+                    console.log('Código PIX encontrado (pixCode):', data.pixCode.substring(0, 30) + '...');
+                } else if (data.copy_paste) {
+                    pixCodeElement.value = data.copy_paste;
+                    console.log('Código PIX encontrado (copy_paste):', data.copy_paste.substring(0, 30) + '...');
+                } else if (data.code) {
+                    pixCodeElement.value = data.code;
+                    console.log('Código PIX encontrado (code):', data.code.substring(0, 30) + '...');
                 } else {
-                    // Verificar na resposta checkPaymentStatus do For4Payments
-                    console.log('Verificando código PIX em campos alternativos...');
+                    // Verificar estruturas aninhadas ou resposta de verificação de status
+                    console.log('Sem código PIX direto na resposta, verificando nomes alternativos...');
+                    
+                    // Verificar outros campos possíveis 
                     if (data.original_status && data.pix_code) {
-                        document.getElementById('pixCodeText').value = data.pix_code;
-                        console.log('Código PIX encontrado em campo alternativo');
+                        pixCodeElement.value = data.pix_code;
+                        console.log('Código PIX encontrado em campo alternativo (status)');
+                    } else if (data.payment && data.payment.pixCode) {
+                        pixCodeElement.value = data.payment.pixCode;
+                        console.log('Código PIX encontrado em estrutura aninhada (payment.pixCode)');
+                    } else if (data.payment && data.payment.copy_paste) {
+                        pixCodeElement.value = data.payment.copy_paste;
+                        console.log('Código PIX encontrado em estrutura aninhada (payment.copy_paste)');
                     } else {
                         console.error("Código PIX não disponível na resposta da API");
+                        // Se ainda não temos um código PIX mas temos QR code, pelo menos mostramos isso
+                        if (!pixCodeElement.value && document.getElementById('pixQrCode').src) {
+                            pixCodeElement.value = "Utilize o QR code para pagamento via PIX";
+                        }
                     }
                 }
                 
