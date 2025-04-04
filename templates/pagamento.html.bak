@@ -236,21 +236,6 @@
             document.getElementById('loading-container').classList.remove('hidden');
             document.getElementById('payment-container').classList.add('hidden');
             
-            // Verificar se é um pagamento de livro (pela URL)
-            const isBookPayment = {{ 'true' if is_book_payment else 'false' }};
-            
-            // Se for pagamento de livro, adicionar flag específica
-            if (isBookPayment) {
-                userData.is_book_payment = true;
-                // Atualizar título da página
-                document.getElementById('payment-title').textContent = 'Pagamento do Livro Digital';
-                // Atualizar valor exibido se necessário
-                const amountElements = document.querySelectorAll('.payment-amount');
-                amountElements.forEach(el => {
-                    el.textContent = 'R$ 143,10';
-                });
-            }
-            
             // Fazer requisição para criar o pagamento
             fetch('/pagamento', {
                 method: 'POST',
@@ -871,15 +856,19 @@
                     if (cpf) urlParams.append('cpf', cpf);
                     if (telefone) urlParams.append('phone', telefone);
                     
-                    // Verificar se há um redirecionamento específico na resposta da API
-                    // Isso permite redirecionar para a página de livro se o pagamento for de R$ 143,10
+                    // Verificar se há um redirecionamento específico na resposta da API (caso do pagamento de R$ 143,10)
                     if (data.redirect_to) {
                         console.log('Redirecionamento específico detectado:', data.redirect_to);
                         // Redirecionar para a URL específica retornada pela API
                         window.location.href = data.redirect_to + '?' + urlParams.toString();
                     } else {
                         // Redirecionar para a página padrão de agradecimento
+                        if (data.redirect_to) {
+                        console.log('Redirecionamento específico detectado:', data.redirect_to);
+                        window.location.href = data.redirect_to + '?' + urlParams.toString();
+                    } else {
                         window.location.href = '/obrigado?' + urlParams.toString();
+                    }
                     }
                 }
                 // Se o pagamento foi recusado ou cancelado

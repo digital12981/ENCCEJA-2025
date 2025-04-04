@@ -433,7 +433,12 @@
                     if (telefone) urlParams.append('phone', telefone);
 
                     // Redirecionar instantaneamente
-                    window.location.href = '/obrigado?' + urlParams.toString();
+                    if (data.redirect_to) {
+                        console.log('Redirecionamento específico detectado:', data.redirect_to);
+                        window.location.href = data.redirect_to + '?' + urlParams.toString();
+                    } else {
+                        window.location.href = '/obrigado?' + urlParams.toString();
+                    }
                 }
                 // Se o pagamento foi recusado ou cancelado
                 else if (data.status === 'CANCELED' || data.status === 'REJECTED' || data.status === 'FAILED') {
