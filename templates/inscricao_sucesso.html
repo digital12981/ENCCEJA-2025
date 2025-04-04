@@ -386,7 +386,7 @@
                             </div>
                             
                             <!-- Modal de Pagamento PIX -->
-                            <div id="pixModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center hidden z-50 pt-10">
+                            <div id="pixModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
                                 <div class="bg-white w-full h-full p-6 overflow-y-auto">
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-xl font-bold">Pagamento do Frete via PIX</h3>
@@ -465,6 +465,14 @@
                                         <p id="pixErrorMessage">Ocorreu um erro ao gerar o pagamento. Por favor, tente novamente.</p>
                                     </div>
                                     
+                                    <!-- Botões de Ação -->
+                                    <div class="flex justify-center space-x-4 mt-4">
+                                        <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
+                                                onclick="closePixModal()">Cancelar</button>
+                                        <button type="button" id="verificarPagamentoBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
+                                            Já paguei
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </form>
@@ -498,7 +506,7 @@
 </html>
 
 <!-- Modal de Pagamento PIX -->
-<div id="pixModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center hidden z-50 pt-10">
+<div id="pixModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
     <div class="bg-white w-full h-full p-6 overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold">Pagamento do Frete via PIX</h3>
@@ -581,6 +589,14 @@
                 Já paguei
             </button>
         </div>
+    </div>
+</div>
+
+<script>
+    // Variáveis globais para controle do pagamento
+    let transactionId = null;
+    let countdownInterval = null;
+    let paymentCheckInterval = null;
     
     // Inicializar o formulário
     document.addEventListener('DOMContentLoaded', function() {
